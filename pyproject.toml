@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "steam-cli"
+version = "0.1.0"
+description = "A lightweight CLI for listing installed Steam games on Windows."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+steam-cli = "steam_cli.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
