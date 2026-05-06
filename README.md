@@ -346,11 +346,15 @@ Steam Store APIでゲーム名を取得できない場合は、`steamapps/appman
 
 ### ロードマップ
 
-- フェーズ2: `--json`, `--csv`, インストールサイズ、最終更新日時 -> 完了
-- フェーズ3: Steam Web API連携、プレイ時間、未プレイゲーム抽出 -> 完了
-- フェーズ3.5: `filter --played`, `filter --min-playtime`, `filter --max-playtime`
-- フェーズ4: HDD / SSDへの配置提案。
-- フェーズ5: GUI、Web UI、自動整理ツール。
+方針は、CLIを読み取り専用の信頼できる分析ツールとして固めてから、配置提案やUIに進めることです。自動整理のようなファイル移動を伴う機能は、提案内容を十分に検証できるようになってから扱います。
+
+- 完了: `--json`, `--csv`, インストールサイズ、最終更新日時、Steam Web API連携、総プレイ時間、未プレイゲーム抽出。
+- フェーズ3.5: プレイ時間フィルタを拡張します。`filter --played`, `filter --min-playtime`, `filter --max-playtime` を追加し、未取得のプレイ時間を結果から除外する条件を明確にします。
+- フェーズ3.6: 並び替えと集計を追加します。サイズ順、最終更新日時順、プレイ時間順、ライブラリ別の件数と容量を確認できるようにします。
+- フェーズ4: ストレージ分析を追加します。ライブラリごとの空き容量、ゲームサイズ、プレイ状況を組み合わせ、HDD / SSD配置を判断するためのレポートを出します。
+- フェーズ4.5: 配置提案を追加します。移動候補、移動後の容量見込み、優先度を表示します。実際の移動は行いません。
+- フェーズ5: 安全な操作支援を検討します。Steamの仕様に沿った移動手順の案内、ドライラン、確認プロンプトを前提にします。
+- フェーズ6: GUI / Web UIを検討します。CLIの出力と判断ロジックが安定してから、可視化や操作画面を追加します。
 
 ### バージョン管理
 
@@ -364,7 +368,7 @@ Steam Store APIでゲーム名を取得できない場合は、`steamapps/appman
 
 初期開発中は `0.x.y` とし、フェーズ単位の機能追加では `MINOR` を上げます。
 
-現在のバージョンは `0.3.0` です。
+現在のバージョンは `0.3.1` です。
 
 ## English
 
@@ -712,11 +716,15 @@ When the Steam Store API cannot return a game name, steam-cli uses the `name` va
 
 ### Roadmap
 
-- Phase 2: `--json`, `--csv`, install size, last updated time -> Done
-- Phase 3: Steam Web API integration, play time, unplayed games -> Done
-- Phase 3.5: `filter --played`, `filter --min-playtime`, `filter --max-playtime`
-- Phase 4: HDD / SSD placement recommendations.
-- Phase 5: GUI, Web UI, automatic organization tools.
+The direction is to keep the CLI as a trustworthy read-only analysis tool first, then move into placement recommendations and UI. Features that move files, such as automatic organization, should wait until recommendations can be inspected and validated clearly.
+
+- Done: `--json`, `--csv`, install size, last updated time, Steam Web API integration, total playtime, and unplayed game filtering.
+- Phase 3.5: Expand playtime filters. Add `filter --played`, `filter --min-playtime`, and `filter --max-playtime`, with clear behavior for games whose playtime could not be fetched.
+- Phase 3.6: Add sorting and summaries. Support sorting by size, last updated time, and playtime, plus per-library game counts and install sizes.
+- Phase 4: Add storage analysis. Combine library free space, game size, and play status into reports that help users reason about HDD / SSD placement.
+- Phase 4.5: Add placement recommendations. Show move candidates, estimated space changes, and priority. Do not move files.
+- Phase 5: Consider safe operation helpers. Base them on Steam-compatible move guidance, dry runs, and confirmation prompts.
+- Phase 6: Consider a GUI / Web UI after the CLI output and decision logic are stable.
 
 ### Versioning
 
@@ -730,4 +738,4 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 During early development, versions use `0.x.y`. Phase-level feature additions bump `MINOR`.
 
-The current version is `0.3.0`.
+The current version is `0.3.1`.
