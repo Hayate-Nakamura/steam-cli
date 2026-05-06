@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 
 from .models import SteamGame, SteamLibrary
@@ -85,6 +86,8 @@ def _game_from_manifest(library: SteamLibrary, manifest_path: Path) -> SteamGame
     app_id = _string_value(app_state.get("appid"))
     name = _string_value(app_state.get("name"))
     install_dir = _string_value(app_state.get("installdir"))
+    install_size_bytes = _int_value(app_state.get("SizeOnDisk"))
+    last_updated_at = _timestamp_value(app_state.get("LastUpdated"))
 
     if not app_id or not name or not install_dir:
         return None
@@ -93,6 +96,9 @@ def _game_from_manifest(library: SteamLibrary, manifest_path: Path) -> SteamGame
         app_id=app_id,
         name=name,
         install_path=library.steamapps_path / "common" / install_dir,
+        install_size_bytes=install_size_bytes,
+        last_updated_at=last_updated_at,
+        appmanifest_name=name,
     )
 
 
@@ -118,3 +124,16 @@ def _string_value(value: object) -> str | None:
     if isinstance(value, str) and value:
         return value
     return None
+
+
+def _int_value(value: object) -> int | None:
+    if not isinstance(value, str) or not value.isdigit():
+        return None
+    return int(value)
+
+
+def _timestamp_value(value: object) -> datetime | None:
+    timestamp = _int_value(value)
+    if timestamp is None:
+        return None
+    return datetime.fromtimestamp(timestamp).astimezone()

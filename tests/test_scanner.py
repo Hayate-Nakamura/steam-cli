@@ -46,6 +46,8 @@ class ScannerTest(unittest.TestCase):
                     "appid" "123"
                     "name" "Example Game"
                     "installdir" "ExampleGame"
+                    "SizeOnDisk" "1073741824"
+                    "LastUpdated" "1700000000"
                 }
                 ''',
                 encoding="utf-8",
@@ -57,6 +59,11 @@ class ScannerTest(unittest.TestCase):
             self.assertEqual(games[0].app_id, "123")
             self.assertEqual(games[0].name, "Example Game")
             self.assertEqual(games[0].install_path, Path(steamapps / "common" / "ExampleGame"))
+            self.assertEqual(games[0].install_size_bytes, 1073741824)
+            self.assertEqual(int(games[0].last_updated_at.timestamp()), 1700000000)
+            self.assertEqual(games[0].appmanifest_name, "Example Game")
+            self.assertEqual(games[0].steam_store_name, None)
+            self.assertEqual(games[0].name_source, "appmanifest")
 
 
 if __name__ == "__main__":
