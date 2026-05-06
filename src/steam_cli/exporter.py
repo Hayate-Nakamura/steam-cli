@@ -7,13 +7,17 @@ from io import StringIO
 from .models import SteamGame
 
 
-def format_games_table(games: list[SteamGame], details: bool = False) -> str:
+def format_games_table(
+    games: list[SteamGame],
+    details: bool = False,
+    show_playtime: bool = False,
+) -> str:
     if not games:
         return "No installed Steam games found."
 
     rows = [
-        _table_headers(details),
-        *[_table_row(game, details) for game in games],
+        _table_headers(details, show_playtime),
+        *[_table_row(game, details, show_playtime) for game in games],
     ]
     widths = [max(len(row[column]) for row in rows) for column in range(len(rows[0]))]
 
@@ -25,19 +29,35 @@ def format_games_table(games: list[SteamGame], details: bool = False) -> str:
     return "\n".join(lines)
 
 
-def format_games_json(games: list[SteamGame], details: bool = False) -> str:
-    return json.dumps([game_to_dict(game, details) for game in games], ensure_ascii=False, indent=2)
+def format_games_json(
+    games: list[SteamGame],
+    details: bool = False,
+    show_playtime: bool = False,
+) -> str:
+    return json.dumps(
+        [game_to_dict(game, details, show_playtime) for game in games],
+        ensure_ascii=False,
+        indent=2,
+    )
 
 
-def format_games_csv(games: list[SteamGame], details: bool = False) -> str:
+def format_games_csv(
+    games: list[SteamGame],
+    details: bool = False,
+    show_playtime: bool = False,
+) -> str:
     output = StringIO()
-    writer = csv.DictWriter(output, fieldnames=list(game_to_dict_fields(details)))
+    writer = csv.DictWriter(output, fieldnames=list(game_to_dict_fields(details, show_playtime)))
     writer.writeheader()
-    writer.writerows(game_to_dict(game, details) for game in games)
+    writer.writerows(game_to_dict(game, details, show_playtime) for game in games)
     return output.getvalue()
 
 
-def game_to_dict(game: SteamGame, details: bool = False) -> dict[str, object]:
+def game_to_dict(
+    game: SteamGame,
+    details: bool = False,
+    show_playtime: bool = False,
+) -> dict[str, object]:
     data: dict[str, object] = {
         "app_id": game.app_id,
         "name": game.name,
@@ -45,6 +65,8 @@ def game_to_dict(game: SteamGame, details: bool = False) -> dict[str, object]:
         "install_size_bytes": game.install_size_bytes,
         "last_updated_at": _format_datetime(game.last_updated_at),
     }
+    if show_playtime:
+        data["playtime_forever_minutes"] = game.playtime_forever_minutes
     if details:
         data.update(
             {
@@ -56,21 +78,28 @@ def game_to_dict(game: SteamGame, details: bool = False) -> dict[str, object]:
     return data
 
 
-def game_to_dict_fields(details: bool = False) -> tuple[str, ...]:
+def game_to_dict_fields(
+    details: bool = False,
+    show_playtime: bool = False,
+) -> tuple[str, ...]:
     fields = ("app_id", "name", "install_path", "install_size_bytes", "last_updated_at")
+    if show_playtime:
+        fields += ("playtime_forever_minutes",)
     if not details:
         return fields
     return fields + ("appmanifest_name", "steam_store_name", "name_source")
 
 
-def _table_headers(details: bool) -> tuple[str, ...]:
+def _table_headers(details: bool, show_playtime: bool) -> tuple[str, ...]:
     headers = ("AppID", "Name", "Size", "Last Updated", "Install Path")
+    if show_playtime:
+        headers = ("AppID", "Name", "Playtime", "Size", "Last Updated", "Install Path")
     if not details:
         return headers
     return headers + ("AppManifest Name", "Steam Store Name", "Name Source")
 
 
-def _table_row(game: SteamGame, details: bool) -> tuple[str, ...]:
+def _table_row(game: SteamGame, details: bool, show_playtime: bool) -> tuple[str, ...]:
     row = (
         game.app_id,
         game.name,
@@ -78,6 +107,15 @@ def _table_row(game: SteamGame, details: bool) -> tuple[str, ...]:
         _format_datetime(game.last_updated_at),
         str(game.install_path),
     )
+    if show_playtime:
+        row = (
+            game.app_id,
+            game.name,
+            _format_playtime(game.playtime_forever_minutes),
+            _format_size(game.install_size_bytes),
+            _format_datetime(game.last_updated_at),
+            str(game.install_path),
+        )
     if not details:
         return row
     return row + (
@@ -105,6 +143,15 @@ def _format_size(size_bytes: int | None) -> str:
     if unit_index == 0:
         return f"{int(size)} {units[unit_index]}"
     return f"{size:.1f} {units[unit_index]}"
+
+
+def _format_playtime(minutes: int | None) -> str:
+    if minutes is None:
+        return "Unknown"
+    hours, remaining_minutes = divmod(minutes, 60)
+    if hours == 0:
+        return f"{remaining_minutes}m"
+    return f"{hours}h {remaining_minutes}m"
 
 
 def _format_datetime(value: object) -> str:

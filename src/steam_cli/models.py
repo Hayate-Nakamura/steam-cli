@@ -24,3 +24,4 @@ class SteamGame:
     appmanifest_name: str | None = None
     steam_store_name: str | None = None
     name_source: str = "appmanifest"
+    playtime_forever_minutes: int | None = None

@@ -1,0 +1,57 @@
+# Changelog
+
+## v0.3.0
+
+### 日本語
+
+#### 追加
+
+- Steam Web API連携を追加し、総プレイ時間を取得できるようにしました。
+- `list --with-playtime` を追加しました。
+- `filter --unplayed` を追加し、総プレイ時間が0分のゲームを抽出できるようにしました。
+- `--refresh` を追加し、総プレイ時間キャッシュを無視して最新情報を取得できるようにしました。
+- `config` コマンドを追加し、SteamID64、Steam Web API key、言語設定を保存できるようにしました。
+- `config --status` を追加し、設定状態、Steam Web APIの妥当性確認、キャッシュ状態を確認できるようにしました。
+- `config --reset` を追加し、保存済み設定を削除できるようにしました。
+- `export --json` を追加しました。
+- Steam Store APIのゲーム名キャッシュと、Steam Web APIの総プレイ時間キャッシュを追加しました。
+- READMEに折り畳み式の出力例を追加しました。
+
+#### 変更
+
+- 設定コマンド名を `configure` から `config` に整理しました。
+- READMEを日本語・英語ともに章立てし直し、可読性を改善しました。
+- バージョンを `0.3.0` に更新しました。
+
+#### 注意
+
+- Steam Web API keyは `config --status` でも表示されません。
+- 総プレイ時間キャッシュはSteamIDごとに6時間保持されます。
+- Steam Store APIで取得したゲーム名は、言語とAppIDごとに7日間保持されます。
+
+### English
+
+#### Added
+
+- Added Steam Web API integration for fetching total playtime.
+- Added `list --with-playtime`.
+- Added `filter --unplayed` to list games with 0 minutes of total playtime.
+- Added `--refresh` to ignore the playtime cache and fetch fresh data.
+- Added the `config` command for saving SteamID64, Steam Web API key, and language settings.
+- Added `config --status` to show configuration status, Steam Web API validation, and cache status.
+- Added `config --reset` to remove saved settings.
+- Added `export --json`.
+- Added Steam Store API game-name caching and Steam Web API playtime caching.
+- Added collapsible output examples to the README.
+
+#### Changed
+
+- Renamed the settings command from `configure` to `config`.
+- Reorganized the Japanese and English README sections for readability.
+- Bumped the version to `0.3.0`.
+
+#### Notes
+
+- Steam Web API key values are not printed by `config --status`.
+- Total playtime is cached per SteamID for 6 hours.
+- Game names fetched from the Steam Store API are cached per language and AppID for 7 days.

@@ -48,6 +48,19 @@ class ExporterTest(unittest.TestCase):
         self.assertIn("仁王 Complete Edition", output)
         self.assertIn("steam_store", output)
 
+    def test_format_games_table_includes_playtime_when_requested(self):
+        game = SteamGame(
+            app_id="123",
+            name="Example Game",
+            install_path=Path("C:/Steam/steamapps/common/ExampleGame"),
+            playtime_forever_minutes=125,
+        )
+
+        output = format_games_table([game], show_playtime=True)
+
+        self.assertIn("Playtime", output)
+        self.assertIn("2h 5m", output)
+
     def test_format_games_json(self):
         game = SteamGame(
             app_id="123",
@@ -80,6 +93,18 @@ class ExporterTest(unittest.TestCase):
         self.assertEqual(data[0]["steam_store_name"], "仁王 Complete Edition")
         self.assertEqual(data[0]["name_source"], "steam_store")
 
+    def test_format_games_json_includes_playtime_when_requested(self):
+        game = SteamGame(
+            app_id="123",
+            name="Example Game",
+            install_path=Path("C:/Steam/steamapps/common/ExampleGame"),
+            playtime_forever_minutes=125,
+        )
+
+        data = json.loads(format_games_json([game], show_playtime=True))
+
+        self.assertEqual(data[0]["playtime_forever_minutes"], 125)
+
     def test_format_games_csv(self):
         game = SteamGame(
             app_id="123",
@@ -110,6 +135,19 @@ class ExporterTest(unittest.TestCase):
         self.assertIn("Nioh: Complete Edition", output)
         self.assertIn("仁王 Complete Edition", output)
         self.assertIn("steam_store", output)
+
+    def test_format_games_csv_includes_playtime_when_requested(self):
+        game = SteamGame(
+            app_id="123",
+            name="Example Game",
+            install_path=Path("C:/Steam/steamapps/common/ExampleGame"),
+            playtime_forever_minutes=125,
+        )
+
+        output = format_games_csv([game], show_playtime=True)
+
+        self.assertIn("playtime_forever_minutes", output)
+        self.assertIn("125", output)
 
 
 if __name__ == "__main__":
