@@ -4,17 +4,57 @@
 
 Windows上にインストールされているSteamゲームを確認するための軽量CLIです。
 
+Steamライブラリをローカルから読み取り、Steam Store APIでローカライズされたゲーム名を取得し、必要に応じてSteam Web APIから総プレイ時間も取得します。
+
+実行時の依存関係は、意図的にPython標準ライブラリのみに限定しています。
+
 ### 機能
 
 - WindowsレジストリからSteamのインストールパスを検出します。
 - `steamapps/libraryfolders.vdf` を読み取り、Steamライブラリを検出します。
 - `steamapps/appmanifest_*.acf` からインストール済みゲーム情報を解析します。
 - Steam Store APIからSteamの言語設定に合わせたゲーム名を取得します。
-- 総プレイ時間を取得します。
+- Steam Web APIから総プレイ時間を取得します。
 - JSON / CSV / テーブル形式で出力できます。
 - 未プレイゲームを抽出できます。
 
-実行時の依存関係は、意図的にPython標準ライブラリのみに限定しています。
+### 必要条件
+
+| 項目 | 内容 |
+| --- | --- |
+| OS | Windows |
+| Python | 3.11以上 |
+| Steam | インストール済みであること |
+| Steam Web API key | 総プレイ時間と未プレイゲーム抽出を使う場合のみ必要 |
+
+### インストール
+
+開発中のローカル環境では、リポジトリ直下で次のようにインストールできます。
+
+```powershell
+python -m pip install -e .
+```
+
+インストール後、`steam-cli` コマンドを実行できます。
+
+```powershell
+steam-cli list
+```
+
+インストール後は、モジュールとして実行することもできます。
+
+```powershell
+python -m steam_cli list
+```
+
+### コマンド一覧
+
+| コマンド | 用途 |
+| --- | --- |
+| `steam-cli list` | インストール済みゲームを表示します。 |
+| `steam-cli export` | インストール済みゲームをファイルへ書き出します。 |
+| `steam-cli filter` | 条件に合うゲームだけを表示します。 |
+| `steam-cli config` | SteamID64、Steam Web API key、言語設定を保存・確認・削除します。 |
 
 ### 基本的な使い方
 
@@ -26,22 +66,33 @@ steam-cli export --csv games.csv
 steam-cli export --json games.json
 ```
 
-詳細情報を含める場合は `--details` を指定します。
+<details>
+<summary>コマンドと出力例</summary>
+
+**テーブル形式**
+
+**コマンド**
 
 ```powershell
-steam-cli list --details
-steam-cli list --json --details
-steam-cli export --csv games.csv --details
-steam-cli export --json games.json --details
+steam-cli list
 ```
 
-<details>
-<summary>出力例</summary>
+**出力**
 
 ```text
 AppID   Name                  Size    Last Updated         Install Path
 132520  仁王 Complete Edition  70.4 GB 2024/01/15 21:30:05 C:\Program Files (x86)\Steam\steamapps\common\Nioh
 ```
+
+**JSON形式**
+
+**コマンド**
+
+```powershell
+steam-cli list --json
+```
+
+**出力**
 
 ```json
 [
@@ -55,27 +106,58 @@ AppID   Name                  Size    Last Updated         Install Path
 ]
 ```
 
-```text
-# steam-cli config --status
-Config file: C:\Users\you\AppData\Local\steam-cli\config.json
-SteamID64: configured (config file)
-Steam Web API key: configured (config file)
-Language: japanese (config file)
-Steam Store name cache: 120 entries, 118 fresh, 2 expired (C:\Users\you\AppData\Local\steam-cli\store_names.json)
-Steam Web API playtime cache: 1 entries, 1 fresh, 0 expired (C:\Users\you\AppData\Local\steam-cli\webapi_playtime.json)
-Steam Web API validation: OK
+</details>
+
+詳細情報を含める場合は `--details` を指定します。
+
+```powershell
+steam-cli list --details
+steam-cli list --json --details
+steam-cli export --csv games.csv --details
+steam-cli export --json games.json --details
 ```
 
-```text
-# steam-cli list --with-playtime
-AppID   Name                  Playtime  Size     Last Updated         Install Path
-132520  仁王 Complete Edition  12h 35m   70.4 GB  2024/01/15 21:30:05 C:\Program Files (x86)\Steam\steamapps\common\Nioh
+<details>
+<summary>コマンドと出力例</summary>
+
+**詳細テーブル形式**
+
+**コマンド**
+
+```powershell
+steam-cli list --details
 ```
 
+**出力**
+
 ```text
-# steam-cli filter --unplayed
-AppID   Name            Playtime  Size     Last Updated         Install Path
-480     Spacewar        0m        1.2 GB   2023/11/02 19:08:44 C:\Program Files (x86)\Steam\steamapps\common\Spacewar
+AppID   Name                  Size     Last Updated         Install Path                                      AppManifest Name       Steam Store Name        Name Source
+132520  仁王 Complete Edition  70.4 GB  2024/01/15 21:30:05 C:\Program Files (x86)\Steam\steamapps\common\Nioh  Nioh: Complete Edition  仁王 Complete Edition  steam_store
+```
+
+**詳細JSON形式**
+
+**コマンド**
+
+```powershell
+steam-cli list --json --details
+```
+
+**出力**
+
+```json
+[
+	{
+		"app_id": "132520",
+		"name": "仁王 Complete Edition",
+		"install_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Nioh",
+		"install_size_bytes": 75691499520,
+		"last_updated_at": "2024/01/15 21:30:05",
+		"appmanifest_name": "Nioh: Complete Edition",
+		"steam_store_name": "仁王 Complete Edition",
+		"name_source": "steam_store"
+	}
+]
 ```
 
 </details>
@@ -88,11 +170,13 @@ python -m steam_cli --steam-path "C:\Program Files (x86)\Steam" list
 
 ### 設定
 
-総プレイ時間や未プレイゲーム抽出のために、SteamID64、Steam Web API key、任意の言語設定を保存できます。入力後、Steam Web APIへ簡易的な確認リクエストを送り、問題がなければ設定ファイルへ保存します。
+総プレイ時間や未プレイゲーム抽出のために、SteamID64、Steam Web API key、任意の言語設定を保存できます。
 
 ```powershell
 steam-cli config
 ```
+
+入力後、Steam Web APIへ簡易的な確認リクエストを送り、問題がなければ設定ファイルへ保存します。
 
 コマンドラインから値を渡して保存することもできます。
 
@@ -106,6 +190,31 @@ steam-cli config --language japanese
 ```powershell
 steam-cli config --status
 ```
+
+<details>
+<summary>コマンドと出力例</summary>
+
+**設定状態**
+
+**コマンド**
+
+```powershell
+steam-cli config --status
+```
+
+**出力**
+
+```text
+Config file: C:\Users\you\AppData\Local\steam-cli\config.json
+SteamID64: configured (config file)
+Steam Web API key: configured (config file)
+Language: japanese (config file)
+Steam Store name cache: 120 entries, 118 fresh, 2 expired (C:\Users\you\AppData\Local\steam-cli\store_names.json)
+Steam Web API playtime cache: 1 entries, 1 fresh, 0 expired (C:\Users\you\AppData\Local\steam-cli\webapi_playtime.json)
+Steam Web API validation: OK
+```
+
+</details>
 
 保存した設定を削除できます。
 
@@ -122,12 +231,6 @@ $env:STEAM_WEB_API_KEY="YOUR_KEY"
 steam-cli list --with-playtime
 ```
 
-SteamID64とSteam Web API keyの優先順位は、コマンドラインオプション、環境変数、設定ファイルの順です。
-
-言語設定の優先順位は、コマンドラインオプション、`STEAM_CLI_LANGUAGE` 環境変数、設定ファイル、OSロケールの順です。
-
-設定ファイルは通常 `%LOCALAPPDATA%\steam-cli\config.json` に保存されます。Steam Web API keyは秘密情報として扱い、共有しないでください。
-
 ### プレイ時間と未プレイゲーム
 
 総プレイ時間を表示できます。
@@ -137,7 +240,7 @@ steam-cli list --with-playtime
 steam-cli list --with-playtime --refresh
 ```
 
-未プレイゲームを抽出できます。ここでは総プレイ時間が0分と確認できたゲームだけを対象にし、プレイ時間を確認できないゲームは含めません。
+未プレイゲームを抽出できます。
 
 ```powershell
 steam-cli filter --unplayed
@@ -148,13 +251,80 @@ steam-cli filter --unplayed --refresh
 
 `--refresh` を指定すると、総プレイ時間キャッシュを無視して最新情報を取得します。
 
+<details>
+<summary>コマンドと出力例</summary>
+
+**総プレイ時間**
+
+**コマンド**
+
+```powershell
+steam-cli list --with-playtime
+```
+
+**出力**
+
+```text
+AppID   Name                  Playtime  Size     Last Updated         Install Path
+132520  仁王 Complete Edition  12h 35m   70.4 GB  2024/01/15 21:30:05 C:\Program Files (x86)\Steam\steamapps\common\Nioh
+```
+
+**未プレイゲーム**
+
+**コマンド**
+
+```powershell
+steam-cli filter --unplayed
+```
+
+**出力**
+
+```text
+AppID   Name      Playtime  Size    Last Updated         Install Path
+480     Spacewar  0m        1.2 GB  2023/11/02 19:08:44 C:\Program Files (x86)\Steam\steamapps\common\Spacewar
+```
+
+</details>
+
+未プレイゲーム抽出では、総プレイ時間が0分と確認できたゲームだけを対象にし、プレイ時間を確認できないゲームは含めません。
+
+### 出力項目
+
+| 項目 | 内容 |
+| --- | --- |
+| `app_id` | Steam AppIDです。 |
+| `name` | 表示に使うゲーム名です。Steam Store APIで取得できた場合はローカライズ名、取得できない場合は `steamapps/appmanifest_*.acf` の `name` です。 |
+| `install_path` | インストール先パスです。 |
+| `install_size_bytes` | インストールサイズのバイト数です。 |
+| `last_updated_at` | 最終更新日時です。タイムゾーンは含みません。 |
+| `playtime_minutes` | 総プレイ時間の分数です。`--with-playtime` または `filter --unplayed` で出力されます。 |
+| `appmanifest_name` | `steamapps/appmanifest_*.acf` に記録されている `name` です。`--details` で出力されます。 |
+| `steam_store_name` | Steam Store APIで取得したゲーム名です。`--details` で出力されます。 |
+| `name_source` | `name` の由来です。`steam_store` または `appmanifest` です。`--details` で出力されます。 |
+
+### 設定とキャッシュ
+
+| 種類 | 場所 | 内容 |
+| --- | --- | --- |
+| 設定ファイル | `%LOCALAPPDATA%\steam-cli\config.json` | SteamID64、Steam Web API key、言語設定を保存します。 |
+| Steam Store name cache | `%LOCALAPPDATA%\steam-cli\store_names.json` | Steam Store APIで取得したゲーム名を、言語とAppIDごとに7日間キャッシュします。 |
+| Steam Web API playtime cache | `%LOCALAPPDATA%\steam-cli\webapi_playtime.json` | Steam Web APIから取得した総プレイ時間を、SteamIDごとに6時間キャッシュします。 |
+
+SteamID64とSteam Web API keyの優先順位は、コマンドラインオプション、環境変数、設定ファイルの順です。
+
+言語設定の優先順位は、コマンドラインオプション、`STEAM_CLI_LANGUAGE` 環境変数、設定ファイル、OSロケールの順です。
+
+Steam Web API keyは秘密情報として扱い、共有しないでください。
+
+### SteamID64とSteam Web API key
+
 SteamID64はSteamプロフィールURLから確認できます。
 
 プロフィールURLが `https://steamcommunity.com/profiles/76561198000000000` のような形式の場合、`profiles/` の後ろにある17桁の数値がSteamID64です。カスタムURLを使っている場合は、SteamID変換ツールなどでSteamID64を確認してください。
 
 Steam Web API keyはSteam Communityの[Steam Web API Key登録ページ](https://steamcommunity.com/dev/apikey)で取得できます。取得にはSteamアカウントでのサインインと、Steam Web API Terms of Useへの同意が必要です。
 
-### 言語とキャッシュ
+### 言語
 
 ゲーム名の取得に使うSteam Store APIの言語は、OSのロケールから自動判定します。
 
@@ -165,11 +335,14 @@ steam-cli --language japanese list
 steam-cli config --language japanese
 ```
 
-Steam Store APIで取得したゲーム名は、言語とAppIDごとに7日間キャッシュされます。
-
 Steam Store APIでゲーム名を取得できない場合は、`steamapps/appmanifest_*.acf` の `name` を使用します。
 
-総プレイ時間は、SteamIDごとに6時間キャッシュされます。キャッシュ状態は `steam-cli config --status` で確認できます。
+### 制限事項
+
+- SteamがWindowsにインストールされている環境を対象にしています。
+- Steam Store APIでローカライズ名を取得できないゲームでは、`steamapps/appmanifest_*.acf` の `name` を使用します。
+- 非公開プロフィールやSteam Web APIから取得できない情報がある場合、総プレイ時間を確認できないことがあります。
+- `filter --unplayed` は、総プレイ時間が0分と確認できたゲームだけを表示します。
 
 ### ロードマップ
 
@@ -183,16 +356,23 @@ Steam Store APIでゲーム名を取得できない場合は、`steamapps/appman
 
 このプロジェクトは[Semantic Versioning](https://semver.org/)をベースにします。
 
-- `MAJOR`: 互換性のないCLI仕様変更。
-- `MINOR`: 新しいコマンド、オプション、出力項目などの後方互換な機能追加。
-- `PATCH`: バグ修正、ドキュメント修正、内部実装の改善。
+| 種類 | 内容 |
+| --- | --- |
+| `MAJOR` | 互換性のないCLI仕様変更。 |
+| `MINOR` | 新しいコマンド、オプション、出力項目などの後方互換な機能追加。 |
+| `PATCH` | バグ修正、ドキュメント修正、内部実装の改善。 |
 
 初期開発中は `0.x.y` とし、フェーズ単位の機能追加では `MINOR` を上げます。
+
 現在のバージョンは `0.3.0` です。
 
 ## English
 
 A lightweight CLI for inspecting installed Steam games on Windows.
+
+steam-cli reads local Steam libraries, fetches localized game names from the Steam Store API, and can fetch total playtime from the Steam Web API when needed.
+
+Runtime dependencies are intentionally limited to the Python standard library.
 
 ### Features
 
@@ -200,11 +380,47 @@ A lightweight CLI for inspecting installed Steam games on Windows.
 - Read `steamapps/libraryfolders.vdf` and detect Steam libraries.
 - Parse installed game information from `steamapps/appmanifest_*.acf`.
 - Fetch localized game names from the Steam Store API.
-- Fetch total playtime.
+- Fetch total playtime from the Steam Web API.
 - Output as table, JSON, or CSV.
 - Filter unplayed games.
 
-Runtime dependencies are intentionally limited to the Python standard library.
+### Requirements
+
+| Item | Requirement |
+| --- | --- |
+| OS | Windows |
+| Python | 3.11 or later |
+| Steam | Installed |
+| Steam Web API key | Required only for total playtime and unplayed game filtering |
+
+### Installation
+
+For local development, install the project from the repository root:
+
+```powershell
+python -m pip install -e .
+```
+
+After installation, run the `steam-cli` command:
+
+```powershell
+steam-cli list
+```
+
+After installation, you can also run it as a module:
+
+```powershell
+python -m steam_cli list
+```
+
+### Commands
+
+| Command | Purpose |
+| --- | --- |
+| `steam-cli list` | Show installed games. |
+| `steam-cli export` | Export installed games to a file. |
+| `steam-cli filter` | Show games matching a filter. |
+| `steam-cli config` | Save, inspect, or remove SteamID64, Steam Web API key, and language settings. |
 
 ### Basic Usage
 
@@ -216,22 +432,33 @@ steam-cli export --csv games.csv
 steam-cli export --json games.json
 ```
 
-Include detailed fields with `--details`:
+<details>
+<summary>Commands and outputs</summary>
+
+**Table output**
+
+**Command**
 
 ```powershell
-steam-cli list --details
-steam-cli list --json --details
-steam-cli export --csv games.csv --details
-steam-cli export --json games.json --details
+steam-cli list
 ```
 
-<details>
-<summary>Output examples</summary>
+**Output**
 
 ```text
 AppID   Name                  Size    Last Updated         Install Path
 132520  仁王 Complete Edition  70.4 GB 2024/01/15 21:30:05 C:\Program Files (x86)\Steam\steamapps\common\Nioh
 ```
+
+**JSON output**
+
+**Command**
+
+```powershell
+steam-cli list --json
+```
+
+**Output**
 
 ```json
 [
@@ -245,27 +472,58 @@ AppID   Name                  Size    Last Updated         Install Path
 ]
 ```
 
-```text
-# steam-cli config --status
-Config file: C:\Users\you\AppData\Local\steam-cli\config.json
-SteamID64: configured (config file)
-Steam Web API key: configured (config file)
-Language: japanese (config file)
-Steam Store name cache: 120 entries, 118 fresh, 2 expired (C:\Users\you\AppData\Local\steam-cli\store_names.json)
-Steam Web API playtime cache: 1 entries, 1 fresh, 0 expired (C:\Users\you\AppData\Local\steam-cli\webapi_playtime.json)
-Steam Web API validation: OK
+</details>
+
+Include detailed fields with `--details`:
+
+```powershell
+steam-cli list --details
+steam-cli list --json --details
+steam-cli export --csv games.csv --details
+steam-cli export --json games.json --details
 ```
 
-```text
-# steam-cli list --with-playtime
-AppID   Name                  Playtime  Size     Last Updated         Install Path
-132520  仁王 Complete Edition  12h 35m   70.4 GB  2024/01/15 21:30:05 C:\Program Files (x86)\Steam\steamapps\common\Nioh
+<details>
+<summary>Commands and outputs</summary>
+
+**Detailed table output**
+
+**Command**
+
+```powershell
+steam-cli list --details
 ```
 
+**Output**
+
 ```text
-# steam-cli filter --unplayed
-AppID   Name            Playtime  Size     Last Updated         Install Path
-480     Spacewar        0m        1.2 GB   2023/11/02 19:08:44 C:\Program Files (x86)\Steam\steamapps\common\Spacewar
+AppID   Name                  Size     Last Updated         Install Path                                      AppManifest Name       Steam Store Name        Name Source
+132520  仁王 Complete Edition  70.4 GB  2024/01/15 21:30:05 C:\Program Files (x86)\Steam\steamapps\common\Nioh  Nioh: Complete Edition  仁王 Complete Edition  steam_store
+```
+
+**Detailed JSON output**
+
+**Command**
+
+```powershell
+steam-cli list --json --details
+```
+
+**Output**
+
+```json
+[
+	{
+		"app_id": "132520",
+		"name": "仁王 Complete Edition",
+		"install_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Nioh",
+		"install_size_bytes": 75691499520,
+		"last_updated_at": "2024/01/15 21:30:05",
+		"appmanifest_name": "Nioh: Complete Edition",
+		"steam_store_name": "仁王 Complete Edition",
+		"name_source": "steam_store"
+	}
+]
 ```
 
 </details>
@@ -278,11 +536,13 @@ python -m steam_cli --steam-path "C:\Program Files (x86)\Steam" list
 
 ### Configuration
 
-Save SteamID64, the Steam Web API key, and an optional language setting for total playtime and unplayed game filtering. After input, steam-cli sends a lightweight validation request to the Steam Web API and saves the settings only when validation succeeds.
+Save SteamID64, the Steam Web API key, and an optional language setting for total playtime and unplayed game filtering.
 
 ```powershell
 steam-cli config
 ```
+
+After input, steam-cli sends a lightweight validation request to the Steam Web API and saves the settings only when validation succeeds.
 
 You can also pass values directly:
 
@@ -296,6 +556,31 @@ Show configuration status and Steam Web API validation results. The Steam Web AP
 ```powershell
 steam-cli config --status
 ```
+
+<details>
+<summary>Command and output</summary>
+
+**Configuration status**
+
+**Command**
+
+```powershell
+steam-cli config --status
+```
+
+**Output**
+
+```text
+Config file: C:\Users\you\AppData\Local\steam-cli\config.json
+SteamID64: configured (config file)
+Steam Web API key: configured (config file)
+Language: japanese (config file)
+Steam Store name cache: 120 entries, 118 fresh, 2 expired (C:\Users\you\AppData\Local\steam-cli\store_names.json)
+Steam Web API playtime cache: 1 entries, 1 fresh, 0 expired (C:\Users\you\AppData\Local\steam-cli\webapi_playtime.json)
+Steam Web API validation: OK
+```
+
+</details>
 
 Remove saved settings:
 
@@ -312,12 +597,6 @@ $env:STEAM_WEB_API_KEY="YOUR_KEY"
 steam-cli list --with-playtime
 ```
 
-SteamID64 and the Steam Web API key are resolved in this order: command-line options, environment variables, then the config file.
-
-Language is resolved in this order: command-line option, `STEAM_CLI_LANGUAGE` environment variable, config file, then OS locale.
-
-The config file is usually saved to `%LOCALAPPDATA%\steam-cli\config.json`. Treat the Steam Web API key as a secret and do not share it.
-
 ### Playtime And Unplayed Games
 
 Show total playtime:
@@ -327,7 +606,7 @@ steam-cli list --with-playtime
 steam-cli list --with-playtime --refresh
 ```
 
-Filter unplayed games. This includes only games confirmed to have 0 minutes of total playtime; games with unknown playtime are excluded.
+Filter unplayed games:
 
 ```powershell
 steam-cli filter --unplayed
@@ -338,13 +617,80 @@ steam-cli filter --unplayed --refresh
 
 Pass `--refresh` to ignore the total playtime cache and fetch fresh data.
 
+<details>
+<summary>Commands and outputs</summary>
+
+**Total playtime**
+
+**Command**
+
+```powershell
+steam-cli list --with-playtime
+```
+
+**Output**
+
+```text
+AppID   Name                  Playtime  Size     Last Updated         Install Path
+132520  仁王 Complete Edition  12h 35m   70.4 GB  2024/01/15 21:30:05 C:\Program Files (x86)\Steam\steamapps\common\Nioh
+```
+
+**Unplayed games**
+
+**Command**
+
+```powershell
+steam-cli filter --unplayed
+```
+
+**Output**
+
+```text
+AppID   Name      Playtime  Size    Last Updated         Install Path
+480     Spacewar  0m        1.2 GB  2023/11/02 19:08:44 C:\Program Files (x86)\Steam\steamapps\common\Spacewar
+```
+
+</details>
+
+Unplayed filtering includes only games confirmed to have 0 minutes of total playtime. Games with unknown playtime are excluded.
+
+### Output Fields
+
+| Field | Description |
+| --- | --- |
+| `app_id` | Steam AppID. |
+| `name` | Display name. If the Steam Store API returns a localized name, steam-cli uses it. Otherwise, steam-cli uses the `name` value from `steamapps/appmanifest_*.acf`. |
+| `install_path` | Installation path. |
+| `install_size_bytes` | Installation size in bytes. |
+| `last_updated_at` | Last updated time without timezone information. |
+| `playtime_minutes` | Total playtime in minutes. Printed with `--with-playtime` or `filter --unplayed`. |
+| `appmanifest_name` | The `name` value from `steamapps/appmanifest_*.acf`. Printed with `--details`. |
+| `steam_store_name` | Game name fetched from the Steam Store API. Printed with `--details`. |
+| `name_source` | Source of `name`: `steam_store` or `appmanifest`. Printed with `--details`. |
+
+### Settings And Cache
+
+| Type | Location | Description |
+| --- | --- | --- |
+| Config file | `%LOCALAPPDATA%\steam-cli\config.json` | Stores SteamID64, the Steam Web API key, and language setting. |
+| Steam Store name cache | `%LOCALAPPDATA%\steam-cli\store_names.json` | Caches game names fetched from the Steam Store API per language and AppID for 7 days. |
+| Steam Web API playtime cache | `%LOCALAPPDATA%\steam-cli\webapi_playtime.json` | Caches total playtime fetched from the Steam Web API per SteamID for 6 hours. |
+
+SteamID64 and the Steam Web API key are resolved in this order: command-line options, environment variables, then the config file.
+
+Language is resolved in this order: command-line option, `STEAM_CLI_LANGUAGE` environment variable, config file, then OS locale.
+
+Treat the Steam Web API key as a secret and do not share it.
+
+### SteamID64 And Steam Web API Key
+
 You can find your SteamID64 from your Steam profile URL.
 
 If the URL looks like `https://steamcommunity.com/profiles/76561198000000000`, the 17-digit number after `profiles/` is your SteamID64. If you use a custom profile URL, use a SteamID converter to resolve it to SteamID64.
 
 You can get a Steam Web API key from the Steam Community [Steam Web API Key registration page](https://steamcommunity.com/dev/apikey). You need to sign in with your Steam account and agree to the Steam Web API Terms of Use.
 
-### Language And Cache
+### Language
 
 The Steam Store API language is detected from the OS locale.
 
@@ -355,11 +701,14 @@ steam-cli --language japanese list
 steam-cli config --language japanese
 ```
 
-Game names fetched from the Steam Store API are cached per language and AppID for 7 days.
-
 When the Steam Store API cannot return a game name, steam-cli uses the `name` value from `steamapps/appmanifest_*.acf`.
 
-Total playtime is cached per SteamID for 6 hours. Check cache status with `steam-cli config --status`.
+### Limitations
+
+- steam-cli targets Windows environments where Steam is installed.
+- If the Steam Store API cannot return a localized name, steam-cli uses the `name` value from `steamapps/appmanifest_*.acf`.
+- Total playtime may be unavailable for private profiles or information that the Steam Web API cannot return.
+- `filter --unplayed` shows only games confirmed to have 0 minutes of total playtime.
 
 ### Roadmap
 
@@ -373,9 +722,12 @@ Total playtime is cached per SteamID for 6 hours. Check cache status with `steam
 
 This project follows [Semantic Versioning](https://semver.org/).
 
-- `MAJOR`: Incompatible CLI changes.
-- `MINOR`: Backward-compatible feature additions such as new commands, options, or output fields.
-- `PATCH`: Bug fixes, documentation updates, and internal improvements.
+| Type | Description |
+| --- | --- |
+| `MAJOR` | Incompatible CLI changes. |
+| `MINOR` | Backward-compatible feature additions such as new commands, options, or output fields. |
+| `PATCH` | Bug fixes, documentation updates, and internal improvements. |
 
 During early development, versions use `0.x.y`. Phase-level feature additions bump `MINOR`.
+
 The current version is `0.3.0`.

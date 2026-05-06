@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.3.1
+
+### 日本語
+
+#### 変更
+
+- READMEに必要条件、インストール方法、コマンド一覧、出力項目、設定とキャッシュ、制限事項を追加しました。
+- README全体の章構成を見直し、初めて読む人が導入から主要機能まで辿りやすい構成にしました。
+- バージョンを `0.3.1` に更新しました。
+
+### English
+
+#### Changed
+
+- Added requirements, installation steps, command summary, output fields, settings and cache details, and limitations to the README.
+- Reorganized the README so new users can move from setup to core features more easily.
+- Bumped the version to `0.3.1`.
+
 ## v0.3.0
 
 ### 日本語
