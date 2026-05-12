@@ -12,6 +12,7 @@ from steam_cli.webapi import (
     SteamWebApiConfigError,
     add_playtime,
     fetch_owned_game_playtimes,
+    filter_playtime_games,
     filter_unplayed_games,
     resolve_steam_id,
     resolve_web_api_key,
@@ -143,6 +144,40 @@ class WebApiTest(unittest.TestCase):
         unplayed = filter_unplayed_games(games)
 
         self.assertEqual([game.app_id for game in unplayed], ["123"])
+
+    def test_filter_playtime_games_keeps_played_only(self):
+        games = [
+            SteamGame(app_id="123", name="Unplayed", install_path=Path("C:/Steam/A"), playtime_forever_minutes=0),
+            SteamGame(app_id="456", name="Played", install_path=Path("C:/Steam/B"), playtime_forever_minutes=125),
+            SteamGame(app_id="789", name="Unknown", install_path=Path("C:/Steam/C"), playtime_forever_minutes=None),
+        ]
+
+        played = filter_playtime_games(games, played=True)
+
+        self.assertEqual([game.app_id for game in played], ["456"])
+
+    def test_filter_playtime_games_applies_min_and_max_inclusively(self):
+        games = [
+            SteamGame(app_id="123", name="Short", install_path=Path("C:/Steam/A"), playtime_forever_minutes=30),
+            SteamGame(app_id="456", name="Middle", install_path=Path("C:/Steam/B"), playtime_forever_minutes=125),
+            SteamGame(app_id="789", name="Long", install_path=Path("C:/Steam/C"), playtime_forever_minutes=300),
+            SteamGame(app_id="999", name="Unknown", install_path=Path("C:/Steam/D"), playtime_forever_minutes=None),
+        ]
+
+        filtered = filter_playtime_games(games, min_playtime=125, max_playtime=300)
+
+        self.assertEqual([game.app_id for game in filtered], ["456", "789"])
+
+    def test_filter_playtime_games_combines_play_state_and_range(self):
+        games = [
+            SteamGame(app_id="123", name="Unplayed", install_path=Path("C:/Steam/A"), playtime_forever_minutes=0),
+            SteamGame(app_id="456", name="Short", install_path=Path("C:/Steam/B"), playtime_forever_minutes=20),
+            SteamGame(app_id="789", name="Long", install_path=Path("C:/Steam/C"), playtime_forever_minutes=120),
+        ]
+
+        filtered = filter_playtime_games(games, played=True, max_playtime=60)
+
+        self.assertEqual([game.app_id for game in filtered], ["456"])
 
     def test_resolve_credentials_from_environment(self):
         with patch.dict(

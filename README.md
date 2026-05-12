@@ -16,16 +16,16 @@ Steamライブラリをローカルから読み取り、Steam Store APIでロー
 - Steam Store APIからSteamの言語設定に合わせたゲーム名を取得します。
 - Steam Web APIから総プレイ時間を取得します。
 - JSON / CSV / テーブル形式で出力できます。
-- 未プレイゲームを抽出できます。
+- プレイ時間でゲームを抽出できます。
 
 ### 必要条件
 
-| 項目 | 内容 |
-| --- | --- |
-| OS | Windows |
-| Python | 3.11以上 |
-| Steam | インストール済みであること |
-| Steam Web API key | 総プレイ時間と未プレイゲーム抽出を使う場合のみ必要 |
+| 項目              | 内容                                               |
+| ----------------- | -------------------------------------------------- |
+| OS                | Windows                                            |
+| Python            | 3.11以上                                           |
+| Steam             | インストール済みであること                         |
+| Steam Web API key | 総プレイ時間とプレイ時間フィルタを使う場合のみ必要 |
 
 ### インストール
 
@@ -49,11 +49,11 @@ python -m steam_cli list
 
 ### コマンド一覧
 
-| コマンド | 用途 |
-| --- | --- |
-| `steam-cli list` | インストール済みゲームを表示します。 |
-| `steam-cli export` | インストール済みゲームをファイルへ書き出します。 |
-| `steam-cli filter` | 条件に合うゲームだけを表示します。 |
+| コマンド           | 用途                                                             |
+| ------------------ | ---------------------------------------------------------------- |
+| `steam-cli list`   | インストール済みゲームを表示します。                             |
+| `steam-cli export` | インストール済みゲームをファイルへ書き出します。                 |
+| `steam-cli filter` | 条件に合うゲームだけを表示します。                               |
 | `steam-cli config` | SteamID64、Steam Web API key、言語設定を保存・確認・削除します。 |
 
 ### 基本的な使い方
@@ -170,7 +170,7 @@ python -m steam_cli --steam-path "C:\Program Files (x86)\Steam" list
 
 ### 設定
 
-総プレイ時間や未プレイゲーム抽出のために、SteamID64、Steam Web API key、任意の言語設定を保存できます。
+総プレイ時間やプレイ時間フィルタのために、SteamID64、Steam Web API key、任意の言語設定を保存できます。
 
 ```powershell
 steam-cli config
@@ -231,7 +231,7 @@ $env:STEAM_WEB_API_KEY="YOUR_KEY"
 steam-cli list --with-playtime
 ```
 
-### プレイ時間と未プレイゲーム
+### プレイ時間とフィルタ
 
 総プレイ時間を表示できます。
 
@@ -240,10 +240,14 @@ steam-cli list --with-playtime
 steam-cli list --with-playtime --refresh
 ```
 
-未プレイゲームを抽出できます。
+プレイ時間でゲームを抽出できます。
 
 ```powershell
 steam-cli filter --unplayed
+steam-cli filter --played
+steam-cli filter --min-playtime 60
+steam-cli filter --max-playtime 120
+steam-cli filter --played --min-playtime 60 --max-playtime 120
 steam-cli filter --unplayed --json
 steam-cli filter --unplayed --csv
 steam-cli filter --unplayed --refresh
@@ -269,45 +273,50 @@ AppID   Name                  Playtime  Size     Last Updated         Install Pa
 132520  仁王 Complete Edition  12h 35m   70.4 GB  2024/01/15 21:30:05 C:\Program Files (x86)\Steam\steamapps\common\Nioh
 ```
 
-**未プレイゲーム**
+**プレイ時間フィルタ**
 
 **コマンド**
 
 ```powershell
-steam-cli filter --unplayed
+steam-cli filter --played --min-playtime 60 --max-playtime 180
 ```
 
 **出力**
 
 ```text
-AppID   Name      Playtime  Size    Last Updated         Install Path
-480     Spacewar  0m        1.2 GB  2023/11/02 19:08:44 C:\Program Files (x86)\Steam\steamapps\common\Spacewar
+AppID   Name                  Playtime  Size     Last Updated         Install Path
+132520  仁王 Complete Edition  2h 5m     70.4 GB  2024/01/15 21:30:05 C:\Program Files (x86)\Steam\steamapps\common\Nioh
 ```
 
 </details>
 
-未プレイゲーム抽出では、総プレイ時間が0分と確認できたゲームだけを対象にし、プレイ時間を確認できないゲームは含めません。
+プレイ時間フィルタの挙動:
+
+- `filter --unplayed` は、総プレイ時間が0分のゲームだけを表示します。
+- `filter --played` は、総プレイ時間が1分以上のゲームだけを表示します。
+- `--min-playtime` と `--max-playtime` は分単位で指定し、境界値を含めて判定します。
+- プレイ時間を確認できないゲームは含めません。
 
 ### 出力項目
 
-| 項目 | 内容 |
-| --- | --- |
-| `app_id` | Steam AppIDです。 |
-| `name` | 表示に使うゲーム名です。Steam Store APIで取得できた場合はローカライズ名、取得できない場合は `steamapps/appmanifest_*.acf` の `name` です。 |
-| `install_path` | インストール先パスです。 |
-| `install_size_bytes` | インストールサイズのバイト数です。 |
-| `last_updated_at` | 最終更新日時です。タイムゾーンは含みません。 |
-| `playtime_minutes` | 総プレイ時間の分数です。`--with-playtime` または `filter --unplayed` で出力されます。 |
-| `appmanifest_name` | `steamapps/appmanifest_*.acf` に記録されている `name` です。`--details` で出力されます。 |
-| `steam_store_name` | Steam Store APIで取得したゲーム名です。`--details` で出力されます。 |
-| `name_source` | `name` の由来です。`steam_store` または `appmanifest` です。`--details` で出力されます。 |
+| 項目                       | 内容                                                                                                                                       |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `app_id`                   | Steam AppIDです。                                                                                                                          |
+| `name`                     | 表示に使うゲーム名です。Steam Store APIで取得できた場合はローカライズ名、取得できない場合は `steamapps/appmanifest_*.acf` の `name` です。 |
+| `install_path`             | インストール先パスです。                                                                                                                   |
+| `install_size_bytes`       | インストールサイズのバイト数です。                                                                                                         |
+| `last_updated_at`          | 最終更新日時です。タイムゾーンは含みません。                                                                                               |
+| `playtime_forever_minutes` | 総プレイ時間の分数です。`--with-playtime` または `filter` のプレイ時間条件で出力されます。                                                 |
+| `appmanifest_name`         | `steamapps/appmanifest_*.acf` に記録されている `name` です。`--details` で出力されます。                                                   |
+| `steam_store_name`         | Steam Store APIで取得したゲーム名です。`--details` で出力されます。                                                                        |
+| `name_source`              | `name` の由来です。`steam_store` または `appmanifest` です。`--details` で出力されます。                                                   |
 
 ### 設定とキャッシュ
 
-| 種類 | 場所 | 内容 |
-| --- | --- | --- |
-| 設定ファイル | `%LOCALAPPDATA%\steam-cli\config.json` | SteamID64、Steam Web API key、言語設定を保存します。 |
-| Steam Store name cache | `%LOCALAPPDATA%\steam-cli\store_names.json` | Steam Store APIで取得したゲーム名を、言語とAppIDごとに7日間キャッシュします。 |
+| 種類                         | 場所                                            | 内容                                                                          |
+| ---------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------- |
+| 設定ファイル                 | `%LOCALAPPDATA%\steam-cli\config.json`          | SteamID64、Steam Web API key、言語設定を保存します。                          |
+| Steam Store name cache       | `%LOCALAPPDATA%\steam-cli\store_names.json`     | Steam Store APIで取得したゲーム名を、言語とAppIDごとに7日間キャッシュします。 |
 | Steam Web API playtime cache | `%LOCALAPPDATA%\steam-cli\webapi_playtime.json` | Steam Web APIから取得した総プレイ時間を、SteamIDごとに6時間キャッシュします。 |
 
 SteamID64とSteam Web API keyの優先順位は、コマンドラインオプション、環境変数、設定ファイルの順です。
@@ -342,33 +351,53 @@ Steam Store APIでゲーム名を取得できない場合は、`steamapps/appman
 - SteamがWindowsにインストールされている環境を対象にしています。
 - Steam Store APIでローカライズ名を取得できないゲームでは、`steamapps/appmanifest_*.acf` の `name` を使用します。
 - 非公開プロフィールやSteam Web APIから取得できない情報がある場合、総プレイ時間を確認できないことがあります。
-- `filter --unplayed` は、総プレイ時間が0分と確認できたゲームだけを表示します。
+- `filter` のプレイ時間条件は、総プレイ時間を確認できたゲームだけを対象にします。
 
 ### ロードマップ
 
 方針は、CLIを読み取り専用の信頼できる分析ツールとして固めてから、配置提案やUIに進めることです。自動整理のようなファイル移動を伴う機能は、提案内容を十分に検証できるようになってから扱います。
 
-- 完了: `--json`, `--csv`, インストールサイズ、最終更新日時、Steam Web API連携、総プレイ時間、未プレイゲーム抽出。
-- フェーズ3.5: プレイ時間フィルタを拡張します。`filter --played`, `filter --min-playtime`, `filter --max-playtime` を追加し、未取得のプレイ時間を結果から除外する条件を明確にします。
-- フェーズ3.6: 並び替えと集計を追加します。サイズ順、最終更新日時順、プレイ時間順、ライブラリ別の件数と容量を確認できるようにします。
-- フェーズ4: ストレージ分析を追加します。ライブラリごとの空き容量、ゲームサイズ、プレイ状況を組み合わせ、HDD / SSD配置を判断するためのレポートを出します。
-- フェーズ4.5: 配置提案を追加します。移動候補、移動後の容量見込み、優先度を表示します。実際の移動は行いません。
-- フェーズ5: 安全な操作支援を検討します。Steamの仕様に沿った移動手順の案内、ドライラン、確認プロンプトを前提にします。
-- フェーズ6: GUI / Web UIを検討します。CLIの出力と判断ロジックが安定してから、可視化や操作画面を追加します。
+ロードマップは、実装の目的がわかるように分類して管理します。
+
+| 目的分類           | 内容                                                                           |
+| ------------------ | ------------------------------------------------------------------------------ |
+| 機能追加           | 新しいコマンド、オプション、出力項目、分析軸を追加します。                     |
+| バグフィックス     | 既存機能の不具合、例外、誤った出力、環境差による失敗を修正します。             |
+| ユーザー体験の向上 | 導入、配布、表示、操作、エラーメッセージ、ドキュメントを改善します。           |
+| 安全性の向上       | ファイル移動や外部操作を伴う機能で、ドライラン、確認、リスク低減を整備します。 |
+
+| フェーズ    | ステータス | 目的分類           | 内容                                                                                                                                                                   |
+| ----------- | ---------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| フェーズ3   | 完了       | 機能追加           | Steam Web API連携、総プレイ時間、未プレイゲーム抽出を追加しました。                                                                                                    |
+| フェーズ3.5 | 完了       | 機能追加           | プレイ時間フィルタを拡張しました。`filter --played`, `filter --min-playtime`, `filter --max-playtime` を追加し、未取得のプレイ時間を結果から除外する条件を明確にしました。 |
+| フェーズ3.6 | 未着手     | 機能追加           | 並び替えと集計を追加します。サイズ順、最終更新日時順、プレイ時間順、ライブラリ別の件数と容量を確認できるようにします。                                                 |
+| フェーズ3.7 | 未着手     | ユーザー体験の向上 | Windows向け配布を整備します。単体exeのビルド手順、バージョン表示、リリース成果物の命名を追加します。                                                                   |
+| フェーズ4   | 未着手     | 機能追加           | ストレージ分析を追加します。ライブラリごとの空き容量、ゲームサイズ、プレイ状況を組み合わせ、HDD / SSD配置を判断するためのレポートを出します。                          |
+| フェーズ4.5 | 未着手     | 機能追加           | 配置提案を追加します。移動候補、移動後の容量見込み、優先度を表示します。実際の移動は行いません。                                                                       |
+| フェーズ5   | 未着手     | 安全性の向上       | 安全な操作支援を検討します。Steamの仕様に沿った移動手順の案内、ドライラン、確認プロンプトを前提にします。                                                              |
+| フェーズ6   | 未着手     | ユーザー体験の向上 | GUI / Web UIを検討します。CLIの出力と判断ロジックが安定してから、可視化や操作画面を追加します。                                                                        |
+
+設計中の項目:
+
+実装可否やフェーズをすぐに決めないアイデアは、ここに記録して検討を継続します。
+
+| 機能名                           | 機能概要                                                        | 検討中の項目                                                                                       |
+| -------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| インストール済みゲームの起動支援 | インストール済みゲームをSteam経由で起動できるようにする案です。 | 読み取り中心の分析ツールという本質との整合性、コマンド仕様、フェーズへの組み込み可否を検討します。 |
 
 ### バージョン管理
 
 このプロジェクトは[Semantic Versioning](https://semver.org/)をベースにします。
 
-| 種類 | 内容 |
-| --- | --- |
-| `MAJOR` | 互換性のないCLI仕様変更。 |
+| 種類    | 内容                                                           |
+| ------- | -------------------------------------------------------------- |
+| `MAJOR` | 互換性のないCLI仕様変更。                                      |
 | `MINOR` | 新しいコマンド、オプション、出力項目などの後方互換な機能追加。 |
-| `PATCH` | バグ修正、ドキュメント修正、内部実装の改善。 |
+| `PATCH` | バグ修正、ドキュメント修正、内部実装の改善。                   |
 
 初期開発中は `0.x.y` とし、フェーズ単位の機能追加では `MINOR` を上げます。
 
-現在のバージョンは `0.3.1` です。
+現在のバージョンは `0.4.0` です。
 
 ## English
 
@@ -386,16 +415,16 @@ Runtime dependencies are intentionally limited to the Python standard library.
 - Fetch localized game names from the Steam Store API.
 - Fetch total playtime from the Steam Web API.
 - Output as table, JSON, or CSV.
-- Filter unplayed games.
+- Filter games by playtime.
 
 ### Requirements
 
-| Item | Requirement |
-| --- | --- |
-| OS | Windows |
-| Python | 3.11 or later |
-| Steam | Installed |
-| Steam Web API key | Required only for total playtime and unplayed game filtering |
+| Item              | Requirement                                                  |
+| ----------------- | ------------------------------------------------------------ |
+| OS                | Windows                                                      |
+| Python            | 3.11 or later                                                |
+| Steam             | Installed                                                    |
+| Steam Web API key | Required only for total playtime and playtime filters  |
 
 ### Installation
 
@@ -419,11 +448,11 @@ python -m steam_cli list
 
 ### Commands
 
-| Command | Purpose |
-| --- | --- |
-| `steam-cli list` | Show installed games. |
-| `steam-cli export` | Export installed games to a file. |
-| `steam-cli filter` | Show games matching a filter. |
+| Command            | Purpose                                                                       |
+| ------------------ | ----------------------------------------------------------------------------- |
+| `steam-cli list`   | Show installed games.                                                         |
+| `steam-cli export` | Export installed games to a file.                                             |
+| `steam-cli filter` | Show games matching a filter.                                                 |
 | `steam-cli config` | Save, inspect, or remove SteamID64, Steam Web API key, and language settings. |
 
 ### Basic Usage
@@ -540,7 +569,7 @@ python -m steam_cli --steam-path "C:\Program Files (x86)\Steam" list
 
 ### Configuration
 
-Save SteamID64, the Steam Web API key, and an optional language setting for total playtime and unplayed game filtering.
+Save SteamID64, the Steam Web API key, and an optional language setting for total playtime and playtime filters.
 
 ```powershell
 steam-cli config
@@ -601,7 +630,7 @@ $env:STEAM_WEB_API_KEY="YOUR_KEY"
 steam-cli list --with-playtime
 ```
 
-### Playtime And Unplayed Games
+### Playtime And Filters
 
 Show total playtime:
 
@@ -610,10 +639,14 @@ steam-cli list --with-playtime
 steam-cli list --with-playtime --refresh
 ```
 
-Filter unplayed games:
+Filter games by playtime:
 
 ```powershell
 steam-cli filter --unplayed
+steam-cli filter --played
+steam-cli filter --min-playtime 60
+steam-cli filter --max-playtime 120
+steam-cli filter --played --min-playtime 60 --max-playtime 120
 steam-cli filter --unplayed --json
 steam-cli filter --unplayed --csv
 steam-cli filter --unplayed --refresh
@@ -639,46 +672,51 @@ AppID   Name                  Playtime  Size     Last Updated         Install Pa
 132520  仁王 Complete Edition  12h 35m   70.4 GB  2024/01/15 21:30:05 C:\Program Files (x86)\Steam\steamapps\common\Nioh
 ```
 
-**Unplayed games**
+**Playtime filter**
 
 **Command**
 
 ```powershell
-steam-cli filter --unplayed
+steam-cli filter --played --min-playtime 60 --max-playtime 180
 ```
 
 **Output**
 
 ```text
-AppID   Name      Playtime  Size    Last Updated         Install Path
-480     Spacewar  0m        1.2 GB  2023/11/02 19:08:44 C:\Program Files (x86)\Steam\steamapps\common\Spacewar
+AppID   Name                  Playtime  Size     Last Updated         Install Path
+132520  仁王 Complete Edition  2h 5m     70.4 GB  2024/01/15 21:30:05 C:\Program Files (x86)\Steam\steamapps\common\Nioh
 ```
 
 </details>
 
-Unplayed filtering includes only games confirmed to have 0 minutes of total playtime. Games with unknown playtime are excluded.
+Playtime filter behavior:
+
+- `filter --unplayed` shows only games with 0 minutes of total playtime.
+- `filter --played` shows only games with at least 1 minute of total playtime.
+- `--min-playtime` and `--max-playtime` use minutes and include boundary values.
+- Games with unknown playtime are excluded.
 
 ### Output Fields
 
-| Field | Description |
-| --- | --- |
-| `app_id` | Steam AppID. |
-| `name` | Display name. If the Steam Store API returns a localized name, steam-cli uses it. Otherwise, steam-cli uses the `name` value from `steamapps/appmanifest_*.acf`. |
-| `install_path` | Installation path. |
-| `install_size_bytes` | Installation size in bytes. |
-| `last_updated_at` | Last updated time without timezone information. |
-| `playtime_minutes` | Total playtime in minutes. Printed with `--with-playtime` or `filter --unplayed`. |
-| `appmanifest_name` | The `name` value from `steamapps/appmanifest_*.acf`. Printed with `--details`. |
-| `steam_store_name` | Game name fetched from the Steam Store API. Printed with `--details`. |
-| `name_source` | Source of `name`: `steam_store` or `appmanifest`. Printed with `--details`. |
+| Field                | Description                                                                                                                                                      |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app_id`             | Steam AppID.                                                                                                                                                     |
+| `name`               | Display name. If the Steam Store API returns a localized name, steam-cli uses it. Otherwise, steam-cli uses the `name` value from `steamapps/appmanifest_*.acf`. |
+| `install_path`       | Installation path.                                                                                                                                               |
+| `install_size_bytes` | Installation size in bytes.                                                                                                                                      |
+| `last_updated_at`    | Last updated time without timezone information.                                                                                                                  |
+| `playtime_forever_minutes` | Total playtime in minutes. Printed with `--with-playtime` or `filter` playtime conditions.                                                                  |
+| `appmanifest_name`   | The `name` value from `steamapps/appmanifest_*.acf`. Printed with `--details`.                                                                                   |
+| `steam_store_name`   | Game name fetched from the Steam Store API. Printed with `--details`.                                                                                            |
+| `name_source`        | Source of `name`: `steam_store` or `appmanifest`. Printed with `--details`.                                                                                      |
 
 ### Settings And Cache
 
-| Type | Location | Description |
-| --- | --- | --- |
-| Config file | `%LOCALAPPDATA%\steam-cli\config.json` | Stores SteamID64, the Steam Web API key, and language setting. |
-| Steam Store name cache | `%LOCALAPPDATA%\steam-cli\store_names.json` | Caches game names fetched from the Steam Store API per language and AppID for 7 days. |
-| Steam Web API playtime cache | `%LOCALAPPDATA%\steam-cli\webapi_playtime.json` | Caches total playtime fetched from the Steam Web API per SteamID for 6 hours. |
+| Type                         | Location                                        | Description                                                                           |
+| ---------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Config file                  | `%LOCALAPPDATA%\steam-cli\config.json`          | Stores SteamID64, the Steam Web API key, and language setting.                        |
+| Steam Store name cache       | `%LOCALAPPDATA%\steam-cli\store_names.json`     | Caches game names fetched from the Steam Store API per language and AppID for 7 days. |
+| Steam Web API playtime cache | `%LOCALAPPDATA%\steam-cli\webapi_playtime.json` | Caches total playtime fetched from the Steam Web API per SteamID for 6 hours.         |
 
 SteamID64 and the Steam Web API key are resolved in this order: command-line options, environment variables, then the config file.
 
@@ -712,30 +750,50 @@ When the Steam Store API cannot return a game name, steam-cli uses the `name` va
 - steam-cli targets Windows environments where Steam is installed.
 - If the Steam Store API cannot return a localized name, steam-cli uses the `name` value from `steamapps/appmanifest_*.acf`.
 - Total playtime may be unavailable for private profiles or information that the Steam Web API cannot return.
-- `filter --unplayed` shows only games confirmed to have 0 minutes of total playtime.
+- `filter` playtime conditions include only games whose total playtime could be fetched.
 
 ### Roadmap
 
 The direction is to keep the CLI as a trustworthy read-only analysis tool first, then move into placement recommendations and UI. Features that move files, such as automatic organization, should wait until recommendations can be inspected and validated clearly.
 
-- Done: `--json`, `--csv`, install size, last updated time, Steam Web API integration, total playtime, and unplayed game filtering.
-- Phase 3.5: Expand playtime filters. Add `filter --played`, `filter --min-playtime`, and `filter --max-playtime`, with clear behavior for games whose playtime could not be fetched.
-- Phase 3.6: Add sorting and summaries. Support sorting by size, last updated time, and playtime, plus per-library game counts and install sizes.
-- Phase 4: Add storage analysis. Combine library free space, game size, and play status into reports that help users reason about HDD / SSD placement.
-- Phase 4.5: Add placement recommendations. Show move candidates, estimated space changes, and priority. Do not move files.
-- Phase 5: Consider safe operation helpers. Base them on Steam-compatible move guidance, dry runs, and confirmation prompts.
-- Phase 6: Consider a GUI / Web UI after the CLI output and decision logic are stable.
+Roadmap items are grouped by implementation purpose.
+
+| Purpose         | Description                                                                                     |
+| --------------- | ----------------------------------------------------------------------------------------------- |
+| Feature         | Add new commands, options, output fields, or analysis dimensions.                               |
+| Bug Fix         | Fix existing defects, exceptions, incorrect output, or environment-specific failures.           |
+| User Experience | Improve installation, distribution, display, operation, error messages, or documentation.       |
+| Safety          | Add dry runs, confirmations, and risk reduction for file-moving or external-operation features. |
+
+| Phase     | Status      | Purpose         | Description                                                                                                                                                                    |
+| --------- | ----------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase 3   | Done        | Feature         | Added Steam Web API integration, total playtime, and unplayed game filtering.                                                                                                   |
+| Phase 3.5 | Done        | Feature         | Expanded playtime filters. Added `filter --played`, `filter --min-playtime`, and `filter --max-playtime`, with clear behavior for games whose playtime could not be fetched. |
+| Phase 3.6 | Not Started | Feature         | Add sorting and summaries. Support sorting by size, last updated time, and playtime, plus per-library game counts and install sizes.                                           |
+| Phase 3.7 | Not Started | User Experience | Prepare Windows distribution. Add single-file exe build instructions, version output, and release artifact naming.                                                             |
+| Phase 4   | Not Started | Feature         | Add storage analysis. Combine library free space, game size, and play status into reports that help users reason about HDD / SSD placement.                                    |
+| Phase 4.5 | Not Started | Feature         | Add placement recommendations. Show move candidates, estimated space changes, and priority. Do not move files.                                                                 |
+| Phase 5   | Not Started | Safety          | Consider safe operation helpers. Base them on Steam-compatible move guidance, dry runs, and confirmation prompts.                                                              |
+| Phase 6   | Not Started | User Experience | Consider a GUI / Web UI after the CLI output and decision logic are stable.                                                                                                    |
+
+Designing:
+
+Ideas whose feasibility or phase is not decided yet are tracked here for continued discussion.
+
+| Feature                          | Overview                                        | Under Consideration                                                                                  |
+| -------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Installed game launching helpers | Let users launch installed games through Steam. | Product fit with the read-focused analysis tool, command shape, and whether to assign it to a phase. |
 
 ### Versioning
 
 This project follows [Semantic Versioning](https://semver.org/).
 
-| Type | Description |
-| --- | --- |
-| `MAJOR` | Incompatible CLI changes. |
+| Type    | Description                                                                            |
+| ------- | -------------------------------------------------------------------------------------- |
+| `MAJOR` | Incompatible CLI changes.                                                              |
 | `MINOR` | Backward-compatible feature additions such as new commands, options, or output fields. |
-| `PATCH` | Bug fixes, documentation updates, and internal improvements. |
+| `PATCH` | Bug fixes, documentation updates, and internal improvements.                           |
 
 During early development, versions use `0.x.y`. Phase-level feature additions bump `MINOR`.
 
-The current version is `0.3.1`.
+The current version is `0.4.0`.

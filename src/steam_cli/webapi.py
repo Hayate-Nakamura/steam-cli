@@ -54,6 +54,30 @@ def filter_unplayed_games(games: list[SteamGame]) -> list[SteamGame]:
     return [game for game in games if game.playtime_forever_minutes == 0]
 
 
+def filter_playtime_games(
+    games: list[SteamGame],
+    played: bool = False,
+    unplayed: bool = False,
+    min_playtime: int | None = None,
+    max_playtime: int | None = None,
+) -> list[SteamGame]:
+    filtered_games: list[SteamGame] = []
+    for game in games:
+        playtime = game.playtime_forever_minutes
+        if playtime is None:
+            continue
+        if unplayed and playtime != 0:
+            continue
+        if played and playtime <= 0:
+            continue
+        if min_playtime is not None and playtime < min_playtime:
+            continue
+        if max_playtime is not None and playtime > max_playtime:
+            continue
+        filtered_games.append(game)
+    return filtered_games
+
+
 def resolve_steam_id(value: str | None = None) -> str:
     steam_id = value or os.environ.get("STEAM_ID") or config.load_config().steam_id
     if not steam_id:

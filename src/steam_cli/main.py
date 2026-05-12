@@ -15,7 +15,7 @@ from .settings import (
     resolve_language,
 )
 from .store import localize_game_names
-from .webapi import SteamWebApiConfigError, add_playtime, filter_unplayed_games
+from .webapi import SteamWebApiConfigError, add_playtime, filter_playtime_games
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -60,7 +60,11 @@ def build_parser() -> argparse.ArgumentParser:
     export_parser.add_argument("--details", action="store_true", help="Include detailed name source fields.")
 
     filter_parser = subparsers.add_parser("filter", help="Filter installed Steam games.")
-    filter_parser.add_argument("--unplayed", action="store_true", required=True, help="Show games with 0 minutes of playtime.")
+    play_state = filter_parser.add_mutually_exclusive_group()
+    play_state.add_argument("--unplayed", action="store_true", help="Show games with 0 minutes of playtime.")
+    play_state.add_argument("--played", action="store_true", help="Show games with more than 0 minutes of playtime.")
+    filter_parser.add_argument("--min-playtime", type=_non_negative_int, help="Minimum total playtime in minutes.")
+    filter_parser.add_argument("--max-playtime", type=_non_negative_int, help="Maximum total playtime in minutes.")
     filter_format = filter_parser.add_mutually_exclusive_group()
     filter_format.add_argument("--json", action="store_true", help="Print games as JSON.")
     filter_format.add_argument("--csv", action="store_true", help="Print games as CSV.")
@@ -69,6 +73,16 @@ def build_parser() -> argparse.ArgumentParser:
     filter_parser.add_argument("--steam-id", help="SteamID64 for Steam Web API requests.")
     filter_parser.add_argument("--web-api-key", help="Steam Web API key.")
     return parser
+
+
+def _non_negative_int(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a non-negative integer") from exc
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("must be a non-negative integer")
+    return parsed
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -98,6 +112,9 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         print(f"Saved steam-cli settings to {config_path}")
         return 0
+
+    if args.command == "filter":
+        _validate_filter_args(parser, args)
 
     try:
         games = find_installed_games(args.steam_path)
@@ -138,8 +155,13 @@ def main(argv: list[str] | None = None) -> int:
             print(f"steam-cli: {exc}", file=sys.stderr)
             return 1
 
-        if args.unplayed:
-            games = filter_unplayed_games(games)
+        games = filter_playtime_games(
+            games,
+            played=args.played,
+            unplayed=args.unplayed,
+            min_playtime=args.min_playtime,
+            max_playtime=args.max_playtime,
+        )
 
         if args.json:
             print(format_games_json(games, args.details, show_playtime=True))
@@ -152,6 +174,22 @@ def main(argv: list[str] | None = None) -> int:
 
     parser.error(f"unknown command: {args.command}")
     return 2
+
+
+def _validate_filter_args(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+    if not any(
+        (
+            args.unplayed,
+            args.played,
+            args.min_playtime is not None,
+            args.max_playtime is not None,
+        )
+    ):
+        parser.error(
+            "filter requires at least one of --unplayed, --played, --min-playtime, or --max-playtime"
+        )
+    if args.min_playtime is not None and args.max_playtime is not None and args.min_playtime > args.max_playtime:
+        parser.error("--min-playtime must be less than or equal to --max-playtime")
 
 
 if __name__ == "__main__":
