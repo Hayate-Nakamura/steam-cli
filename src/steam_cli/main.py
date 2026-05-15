@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -60,6 +61,12 @@ def build_parser() -> argparse.ArgumentParser:
     export_parser.add_argument("--details", action="store_true", help="Include detailed name source fields.")
 
     filter_parser = subparsers.add_parser("filter", help="Filter installed Steam games.")
+    filter_parser.add_argument("--app-id", help="Show games with an exact Steam AppID match.")
+    filter_parser.add_argument("--name", help="Show games whose display name matches a regular expression.")
+    filter_parser.add_argument(
+        "--install-path",
+        help="Show games whose install path matches a regular expression.",
+    )
     play_state = filter_parser.add_mutually_exclusive_group()
     play_state.add_argument("--unplayed", action="store_true", help="Show games with 0 minutes of playtime.")
     play_state.add_argument("--played", action="store_true", help="Show games with more than 0 minutes of playtime.")
@@ -149,27 +156,30 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "filter":
-        try:
-            games = add_playtime(games, args.steam_id, args.web_api_key, refresh=args.refresh)
-        except SteamWebApiConfigError as exc:
-            print(f"steam-cli: {exc}", file=sys.stderr)
-            return 1
+        games = _filter_games_by_metadata(games, args)
+        show_playtime = _has_playtime_filter(args)
+        if show_playtime:
+            try:
+                games = add_playtime(games, args.steam_id, args.web_api_key, refresh=args.refresh)
+            except SteamWebApiConfigError as exc:
+                print(f"steam-cli: {exc}", file=sys.stderr)
+                return 1
 
-        games = filter_playtime_games(
-            games,
-            played=args.played,
-            unplayed=args.unplayed,
-            min_playtime=args.min_playtime,
-            max_playtime=args.max_playtime,
-        )
+            games = filter_playtime_games(
+                games,
+                played=args.played,
+                unplayed=args.unplayed,
+                min_playtime=args.min_playtime,
+                max_playtime=args.max_playtime,
+            )
 
         if args.json:
-            print(format_games_json(games, args.details, show_playtime=True))
+            print(format_games_json(games, args.details, show_playtime=show_playtime))
             return 0
         if args.csv:
-            print(format_games_csv(games, args.details, show_playtime=True), end="")
+            print(format_games_csv(games, args.details, show_playtime=show_playtime), end="")
             return 0
-        print(format_games_table(games, args.details, show_playtime=True))
+        print(format_games_table(games, args.details, show_playtime=show_playtime))
         return 0
 
     parser.error(f"unknown command: {args.command}")
@@ -179,6 +189,9 @@ def main(argv: list[str] | None = None) -> int:
 def _validate_filter_args(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
     if not any(
         (
+            args.app_id,
+            args.name,
+            args.install_path,
             args.unplayed,
             args.played,
             args.min_playtime is not None,
@@ -186,10 +199,55 @@ def _validate_filter_args(parser: argparse.ArgumentParser, args: argparse.Namesp
         )
     ):
         parser.error(
-            "filter requires at least one of --unplayed, --played, --min-playtime, or --max-playtime"
+            "filter requires at least one of --app-id, --name, --install-path, --unplayed, --played, --min-playtime, or --max-playtime"
         )
+    _compile_filter_regex(parser, "--name", args.name)
+    _compile_filter_regex(parser, "--install-path", args.install_path)
     if args.min_playtime is not None and args.max_playtime is not None and args.min_playtime > args.max_playtime:
         parser.error("--min-playtime must be less than or equal to --max-playtime")
+
+
+def _has_playtime_filter(args: argparse.Namespace) -> bool:
+    return any(
+        (
+            args.unplayed,
+            args.played,
+            args.min_playtime is not None,
+            args.max_playtime is not None,
+        )
+    )
+
+
+def _filter_games_by_metadata(games, args: argparse.Namespace):
+    name_pattern = _compile_filter_regex(None, "--name", args.name)
+    install_path_pattern = _compile_filter_regex(None, "--install-path", args.install_path)
+
+    filtered_games = []
+    for game in games:
+        if args.app_id and game.app_id != args.app_id:
+            continue
+        if name_pattern and not name_pattern.search(game.name):
+            continue
+        if install_path_pattern and not install_path_pattern.search(str(game.install_path)):
+            continue
+        filtered_games.append(game)
+    return filtered_games
+
+
+def _compile_filter_regex(
+    parser: argparse.ArgumentParser | None,
+    option: str,
+    value: str | None,
+) -> re.Pattern[str] | None:
+    if value is None:
+        return None
+
+    try:
+        return re.compile(value, re.IGNORECASE)
+    except re.error as exc:
+        if parser is None:
+            raise
+        parser.error(f"{option} must be a valid regular expression: {exc}")
 
 
 if __name__ == "__main__":

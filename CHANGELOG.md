@@ -8,11 +8,14 @@
 
 - `filter --played` を追加し、総プレイ時間が1分以上のゲームを抽出できるようにしました。
 - `filter --min-playtime` と `filter --max-playtime` を追加し、総プレイ時間の範囲で抽出できるようにしました。
+- `filter --app-id` を追加し、Steam AppIDの完全一致で抽出できるようにしました。
+- `filter --name` と `filter --install-path` を追加し、ゲーム名とインストールパスを正規表現で抽出できるようにしました。
 - プレイ時間フィルタでは、総プレイ時間を確認できないゲームを結果から除外する挙動を明記しました。
 
 #### 変更
 
 - バージョンを `0.4.0` に更新しました。
+- Windowsでは、設定ファイルに保存するSteam Web API keyをDPAPIで保護するようにしました。既存の平文設定ファイルも引き続き読み込めます。
 
 ### English
 
@@ -20,11 +23,14 @@
 
 - Added `filter --played` for games with at least 1 minute of total playtime.
 - Added `filter --min-playtime` and `filter --max-playtime` for filtering by total playtime ranges.
+- Added `filter --app-id` for exact Steam AppID matches.
+- Added `filter --name` and `filter --install-path` for regular-expression matching against game names and install paths.
 - Documented that playtime filters exclude games whose total playtime could not be fetched.
 
 #### Changed
 
 - Bumped the version to `0.4.0`.
+- On Windows, Steam Web API keys saved in the config file are now protected with DPAPI. Existing plaintext config files remain readable.
 
 ## v0.3.1
 

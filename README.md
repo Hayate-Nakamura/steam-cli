@@ -253,6 +253,15 @@ steam-cli filter --unplayed --csv
 steam-cli filter --unplayed --refresh
 ```
 
+ゲーム情報でも抽出できます。
+
+```powershell
+steam-cli filter --app-id 132520
+steam-cli filter --name "仁王|Nioh"
+steam-cli filter --install-path "Steam\\steamapps\\common"
+steam-cli filter --name "edition" --install-path "Steam"
+```
+
 `--refresh` を指定すると、総プレイ時間キャッシュを無視して最新情報を取得します。
 
 <details>
@@ -297,6 +306,14 @@ AppID   Name                  Playtime  Size     Last Updated         Install Pa
 - `--min-playtime` と `--max-playtime` は分単位で指定し、境界値を含めて判定します。
 - プレイ時間を確認できないゲームは含めません。
 
+ゲーム情報フィルタの挙動:
+
+- `--app-id` は Steam AppID を完全一致で判定します。
+- `--name` は表示名を正規表現で検索します。
+- `--install-path` はインストールパスを正規表現で検索します。
+- 複数のフィルタを指定した場合は、すべての条件に一致するゲームだけを表示します。
+- プレイ時間条件を指定しない場合、Steam Web API keyは不要です。
+
 ### 出力項目
 
 | 項目                       | 内容                                                                                                                                       |
@@ -315,13 +332,15 @@ AppID   Name                  Playtime  Size     Last Updated         Install Pa
 
 | 種類                         | 場所                                            | 内容                                                                          |
 | ---------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------- |
-| 設定ファイル                 | `%LOCALAPPDATA%\steam-cli\config.json`          | SteamID64、Steam Web API key、言語設定を保存します。                          |
+| 設定ファイル                 | `%LOCALAPPDATA%\steam-cli\config.json`          | SteamID64、Steam Web API key、言語設定を保存します。WindowsではSteam Web API keyをDPAPIで保護します。 |
 | Steam Store name cache       | `%LOCALAPPDATA%\steam-cli\store_names.json`     | Steam Store APIで取得したゲーム名を、言語とAppIDごとに7日間キャッシュします。 |
 | Steam Web API playtime cache | `%LOCALAPPDATA%\steam-cli\webapi_playtime.json` | Steam Web APIから取得した総プレイ時間を、SteamIDごとに6時間キャッシュします。 |
 
 SteamID64とSteam Web API keyの優先順位は、コマンドラインオプション、環境変数、設定ファイルの順です。
 
 言語設定の優先順位は、コマンドラインオプション、`STEAM_CLI_LANGUAGE` 環境変数、設定ファイル、OSロケールの順です。
+
+Windowsでは、設定ファイルへ保存するSteam Web API keyをDPAPIで現在のWindowsユーザーに紐づけて保護します。古い平文の設定ファイルも読み込めますが、次に `steam-cli config` で保存すると保護済み形式へ更新されます。
 
 Steam Web API keyは秘密情報として扱い、共有しないでください。
 
@@ -369,7 +388,7 @@ Steam Store APIでゲーム名を取得できない場合は、`steamapps/appman
 | フェーズ    | ステータス | 目的分類           | 内容                                                                                                                                                                   |
 | ----------- | ---------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | フェーズ3   | 完了       | 機能追加           | Steam Web API連携、総プレイ時間、未プレイゲーム抽出を追加しました。                                                                                                    |
-| フェーズ3.5 | 完了       | 機能追加           | プレイ時間フィルタを拡張しました。`filter --played`, `filter --min-playtime`, `filter --max-playtime` を追加し、未取得のプレイ時間を結果から除外する条件を明確にしました。 |
+| フェーズ3.5 | 完了       | 機能追加           | フィルタを拡張しました。`filter --app-id`, `filter --name`, `filter --install-path`, `filter --played`, `filter --min-playtime`, `filter --max-playtime` を追加し、未取得のプレイ時間を結果から除外する条件を明確にしました。 |
 | フェーズ3.6 | 未着手     | 機能追加           | 並び替えと集計を追加します。サイズ順、最終更新日時順、プレイ時間順、ライブラリ別の件数と容量を確認できるようにします。                                                 |
 | フェーズ3.7 | 未着手     | ユーザー体験の向上 | Windows向け配布を整備します。単体exeのビルド手順、バージョン表示、リリース成果物の命名を追加します。                                                                   |
 | フェーズ4   | 未着手     | 機能追加           | ストレージ分析を追加します。ライブラリごとの空き容量、ゲームサイズ、プレイ状況を組み合わせ、HDD / SSD配置を判断するためのレポートを出します。                          |
@@ -652,6 +671,15 @@ steam-cli filter --unplayed --csv
 steam-cli filter --unplayed --refresh
 ```
 
+Filter by game metadata:
+
+```powershell
+steam-cli filter --app-id 132520
+steam-cli filter --name "Nioh|仁王"
+steam-cli filter --install-path "Steam\\steamapps\\common"
+steam-cli filter --name "edition" --install-path "Steam"
+```
+
 Pass `--refresh` to ignore the total playtime cache and fetch fresh data.
 
 <details>
@@ -696,6 +724,14 @@ Playtime filter behavior:
 - `--min-playtime` and `--max-playtime` use minutes and include boundary values.
 - Games with unknown playtime are excluded.
 
+Game metadata filter behavior:
+
+- `--app-id` matches Steam AppID exactly.
+- `--name` searches the display name with a regular expression.
+- `--install-path` searches the install path with a regular expression.
+- Multiple filters are combined with AND logic.
+- Steam Web API credentials are not required unless you use playtime conditions.
+
 ### Output Fields
 
 | Field                | Description                                                                                                                                                      |
@@ -714,13 +750,15 @@ Playtime filter behavior:
 
 | Type                         | Location                                        | Description                                                                           |
 | ---------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Config file                  | `%LOCALAPPDATA%\steam-cli\config.json`          | Stores SteamID64, the Steam Web API key, and language setting.                        |
+| Config file                  | `%LOCALAPPDATA%\steam-cli\config.json`          | Stores SteamID64, the Steam Web API key, and language setting. On Windows, the Steam Web API key is protected with DPAPI. |
 | Steam Store name cache       | `%LOCALAPPDATA%\steam-cli\store_names.json`     | Caches game names fetched from the Steam Store API per language and AppID for 7 days. |
 | Steam Web API playtime cache | `%LOCALAPPDATA%\steam-cli\webapi_playtime.json` | Caches total playtime fetched from the Steam Web API per SteamID for 6 hours.         |
 
 SteamID64 and the Steam Web API key are resolved in this order: command-line options, environment variables, then the config file.
 
 Language is resolved in this order: command-line option, `STEAM_CLI_LANGUAGE` environment variable, config file, then OS locale.
+
+On Windows, steam-cli protects the Steam Web API key saved in the config file with DPAPI for the current Windows user. Legacy plaintext config files can still be read and are rewritten in the protected format the next time you save with `steam-cli config`.
 
 Treat the Steam Web API key as a secret and do not share it.
 
@@ -768,7 +806,7 @@ Roadmap items are grouped by implementation purpose.
 | Phase     | Status      | Purpose         | Description                                                                                                                                                                    |
 | --------- | ----------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Phase 3   | Done        | Feature         | Added Steam Web API integration, total playtime, and unplayed game filtering.                                                                                                   |
-| Phase 3.5 | Done        | Feature         | Expanded playtime filters. Added `filter --played`, `filter --min-playtime`, and `filter --max-playtime`, with clear behavior for games whose playtime could not be fetched. |
+| Phase 3.5 | Done        | Feature         | Expanded filters. Added `filter --app-id`, `filter --name`, `filter --install-path`, `filter --played`, `filter --min-playtime`, and `filter --max-playtime`, with clear behavior for games whose playtime could not be fetched. |
 | Phase 3.6 | Not Started | Feature         | Add sorting and summaries. Support sorting by size, last updated time, and playtime, plus per-library game counts and install sizes.                                           |
 | Phase 3.7 | Not Started | User Experience | Prepare Windows distribution. Add single-file exe build instructions, version output, and release artifact naming.                                                             |
 | Phase 4   | Not Started | Feature         | Add storage analysis. Combine library free space, game size, and play status into reports that help users reason about HDD / SSD placement.                                    |
