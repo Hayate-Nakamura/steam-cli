@@ -4,6 +4,7 @@ import csv
 import json
 from io import StringIO
 
+from .analysis import GamesSummary
 from .models import SteamGame
 
 
@@ -51,6 +52,28 @@ def format_games_csv(
     writer.writeheader()
     writer.writerows(game_to_dict(game, details, show_playtime) for game in games)
     return output.getvalue()
+
+
+def format_summary(summary: GamesSummary) -> str:
+    lines = [
+        "Summary",
+        f"Games: {summary.game_count}",
+        f"Total size: {_format_size(summary.install_size_bytes)}{_unknown_suffix(summary.unknown_size_count)}",
+    ]
+    if summary.playtime_forever_minutes is not None:
+        lines.append(
+            f"Total playtime: {_format_playtime(summary.playtime_forever_minutes)}"
+            f"{_unknown_suffix(summary.unknown_playtime_count or 0)}"
+        )
+
+    if summary.libraries:
+        lines.append("Libraries:")
+        for library in summary.libraries:
+            lines.append(
+                f"- {library.path}: {library.game_count} games, "
+                f"{_format_size(library.install_size_bytes)}{_unknown_suffix(library.unknown_size_count)}"
+            )
+    return "\n".join(lines)
 
 
 def game_to_dict(
@@ -160,3 +183,11 @@ def _format_datetime(value: object) -> str:
     if hasattr(value, "strftime"):
         return value.strftime("%Y/%m/%d %H:%M:%S")
     return str(value)
+
+
+def _unknown_suffix(count: int) -> str:
+    if count == 0:
+        return ""
+    if count == 1:
+        return " (1 unknown)"
+    return f" ({count} unknown)"

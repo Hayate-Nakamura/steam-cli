@@ -5,7 +5,8 @@ import re
 import sys
 from pathlib import Path
 
-from .exporter import format_games_csv, format_games_json, format_games_table
+from .analysis import sort_games, summarize_games
+from .exporter import format_games_csv, format_games_json, format_games_table, format_summary
 from .scanner import SteamNotFoundError, find_installed_games
 from .settings import (
     SteamCliConfigError,
@@ -50,6 +51,8 @@ def build_parser() -> argparse.ArgumentParser:
     list_format.add_argument("--csv", action="store_true", help="Print games as CSV.")
     list_parser.add_argument("--details", action="store_true", help="Include detailed name source fields.")
     list_parser.add_argument("--with-playtime", action="store_true", help="Include Steam Web API playtime.")
+    _add_sort_options(list_parser)
+    list_parser.add_argument("--summary", action="store_true", help="Print game count and size summaries.")
     list_parser.add_argument("--refresh", action="store_true", help="Refresh Steam Web API playtime cache.")
     list_parser.add_argument("--steam-id", help="SteamID64 for Steam Web API requests.")
     list_parser.add_argument("--web-api-key", help="Steam Web API key.")
@@ -76,6 +79,8 @@ def build_parser() -> argparse.ArgumentParser:
     filter_format.add_argument("--json", action="store_true", help="Print games as JSON.")
     filter_format.add_argument("--csv", action="store_true", help="Print games as CSV.")
     filter_parser.add_argument("--details", action="store_true", help="Include detailed name source fields.")
+    _add_sort_options(filter_parser)
+    filter_parser.add_argument("--summary", action="store_true", help="Print game count and size summaries.")
     filter_parser.add_argument("--refresh", action="store_true", help="Refresh Steam Web API playtime cache.")
     filter_parser.add_argument("--steam-id", help="SteamID64 for Steam Web API requests.")
     filter_parser.add_argument("--web-api-key", help="Steam Web API key.")
@@ -122,6 +127,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "filter":
         _validate_filter_args(parser, args)
+    if args.command in {"list", "filter"}:
+        _validate_output_args(parser, args)
 
     try:
         games = find_installed_games(args.steam_path)
@@ -133,19 +140,21 @@ def main(argv: list[str] | None = None) -> int:
     games = sorted(games, key=lambda game: game.name.casefold())
 
     if args.command == "list":
-        if args.with_playtime:
+        needs_playtime = args.with_playtime or args.sort == "playtime"
+        if needs_playtime:
             try:
                 games = add_playtime(games, args.steam_id, args.web_api_key, refresh=args.refresh)
             except SteamWebApiConfigError as exc:
                 print(f"steam-cli: {exc}", file=sys.stderr)
                 return 1
+        games = sort_games(games, args.sort, args.desc)
         if args.json:
-            print(format_games_json(games, args.details, args.with_playtime))
+            print(format_games_json(games, args.details, needs_playtime))
             return 0
         if args.csv:
-            print(format_games_csv(games, args.details, args.with_playtime), end="")
+            print(format_games_csv(games, args.details, needs_playtime), end="")
             return 0
-        print(format_games_table(games, args.details, args.with_playtime))
+        print(_format_text_output(games, args.details, needs_playtime, args.summary))
         return 0
 
     if args.command == "export":
@@ -158,13 +167,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "filter":
         games = _filter_games_by_metadata(games, args)
         show_playtime = _has_playtime_filter(args)
-        if show_playtime:
+        needs_playtime = show_playtime or args.sort == "playtime"
+        if needs_playtime:
             try:
                 games = add_playtime(games, args.steam_id, args.web_api_key, refresh=args.refresh)
             except SteamWebApiConfigError as exc:
                 print(f"steam-cli: {exc}", file=sys.stderr)
                 return 1
 
+        if show_playtime:
             games = filter_playtime_games(
                 games,
                 played=args.played,
@@ -173,17 +184,34 @@ def main(argv: list[str] | None = None) -> int:
                 max_playtime=args.max_playtime,
             )
 
+        games = sort_games(games, args.sort, args.desc)
+
         if args.json:
-            print(format_games_json(games, args.details, show_playtime=show_playtime))
+            print(format_games_json(games, args.details, show_playtime=needs_playtime))
             return 0
         if args.csv:
-            print(format_games_csv(games, args.details, show_playtime=show_playtime), end="")
+            print(format_games_csv(games, args.details, show_playtime=needs_playtime), end="")
             return 0
-        print(format_games_table(games, args.details, show_playtime=show_playtime))
+        print(_format_text_output(games, args.details, needs_playtime, args.summary))
         return 0
 
     parser.error(f"unknown command: {args.command}")
     return 2
+
+
+def _add_sort_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--sort",
+        choices=("name", "size", "last-updated", "playtime"),
+        default="name",
+        help="Sort games by name, size, last updated time, or playtime.",
+    )
+    parser.add_argument("--desc", action="store_true", help="Sort in descending order.")
+
+
+def _validate_output_args(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+    if args.summary and (args.json or args.csv):
+        parser.error("--summary cannot be combined with --json or --csv")
 
 
 def _validate_filter_args(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
@@ -205,6 +233,18 @@ def _validate_filter_args(parser: argparse.ArgumentParser, args: argparse.Namesp
     _compile_filter_regex(parser, "--install-path", args.install_path)
     if args.min_playtime is not None and args.max_playtime is not None and args.min_playtime > args.max_playtime:
         parser.error("--min-playtime must be less than or equal to --max-playtime")
+
+
+def _format_text_output(
+    games,
+    details: bool,
+    show_playtime: bool,
+    show_summary: bool,
+) -> str:
+    output = format_games_table(games, details, show_playtime)
+    if not show_summary:
+        return output
+    return f"{output}\n\n{format_summary(summarize_games(games, show_playtime))}"
 
 
 def _has_playtime_filter(args: argparse.Namespace) -> bool:

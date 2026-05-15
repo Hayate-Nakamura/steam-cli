@@ -3,6 +3,7 @@ import unittest
 from contextlib import redirect_stderr
 from contextlib import redirect_stdout
 from io import StringIO
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -32,6 +33,22 @@ class MainTest(unittest.TestCase):
         self.assertEqual(args.app_id, "123")
         self.assertEqual(args.name, "example")
         self.assertEqual(args.install_path, "common")
+
+    def test_list_accepts_sort_and_summary_options(self):
+        parser = build_parser()
+
+        args = parser.parse_args(["list", "--sort", "size", "--desc", "--summary"])
+
+        self.assertEqual(args.sort, "size")
+        self.assertTrue(args.desc)
+        self.assertTrue(args.summary)
+
+    def test_summary_rejects_machine_readable_output(self):
+        with redirect_stderr(StringIO()):
+            with self.assertRaises(SystemExit) as exc:
+                main(["list", "--summary", "--json"])
+
+        self.assertEqual(exc.exception.code, 2)
 
     def test_filter_rejects_negative_playtime(self):
         parser = build_parser()
@@ -92,6 +109,76 @@ class MainTest(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertIn('"app_id": "123"', output.getvalue())
         self.assertNotIn('"app_id": "456"', output.getvalue())
+
+    def test_list_sorts_by_size_descending(self):
+        games = [
+            SteamGame(
+                app_id="123",
+                name="Small",
+                install_path=Path("C:/Steam/common/Small"),
+                install_size_bytes=10,
+            ),
+            SteamGame(
+                app_id="456",
+                name="Large",
+                install_path=Path("C:/Steam/common/Large"),
+                install_size_bytes=20,
+            ),
+        ]
+
+        with patch("steam_cli.main.find_installed_games", return_value=games):
+            with patch("steam_cli.main.localize_game_names", return_value=games):
+                output = StringIO()
+                with redirect_stdout(output):
+                    exit_code = main(["list", "--sort", "size", "--desc", "--json"])
+
+        self.assertEqual(exit_code, 0)
+        self.assertLess(output.getvalue().find('"app_id": "456"'), output.getvalue().find('"app_id": "123"'))
+
+    def test_list_sort_by_playtime_fetches_playtime(self):
+        games = [
+            SteamGame(app_id="123", name="Short", install_path=Path("C:/Steam/common/Short")),
+            SteamGame(app_id="456", name="Long", install_path=Path("C:/Steam/common/Long")),
+        ]
+
+        def fake_add_playtime(games, _steam_id, _web_api_key, refresh=False):
+            return [
+                replace(game, playtime_forever_minutes=10 if game.app_id == "123" else 20)
+                for game in games
+            ]
+
+        with patch("steam_cli.main.find_installed_games", return_value=games):
+            with patch("steam_cli.main.localize_game_names", return_value=games):
+                with patch("steam_cli.main.add_playtime", side_effect=fake_add_playtime) as add_playtime:
+                    output = StringIO()
+                    with redirect_stdout(output):
+                        exit_code = main(["list", "--sort", "playtime", "--desc", "--json"])
+
+        self.assertEqual(exit_code, 0)
+        add_playtime.assert_called_once()
+        self.assertLess(output.getvalue().find('"app_id": "456"'), output.getvalue().find('"app_id": "123"'))
+        self.assertIn("playtime_forever_minutes", output.getvalue())
+
+    def test_list_summary_prints_totals(self):
+        games = [
+            SteamGame(
+                app_id="123",
+                name="Example Game",
+                install_path=Path("C:/Steam/steamapps/common/ExampleGame"),
+                install_size_bytes=1073741824,
+            ),
+        ]
+
+        with patch("steam_cli.main.find_installed_games", return_value=games):
+            with patch("steam_cli.main.localize_game_names", return_value=games):
+                output = StringIO()
+                with redirect_stdout(output):
+                    exit_code = main(["list", "--summary"])
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Summary", output.getvalue())
+        self.assertIn("Games: 1", output.getvalue())
+        self.assertIn("Total size: 1.0 GB", output.getvalue())
 
     def test_filter_rejects_min_greater_than_max_before_scanning(self):
         with patch("steam_cli.main.find_installed_games") as find_installed_games:

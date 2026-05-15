@@ -6,7 +6,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from steam_cli.exporter import format_games_csv, format_games_json, format_games_table
+from steam_cli.analysis import summarize_games
+from steam_cli.exporter import format_games_csv, format_games_json, format_games_table, format_summary
 from steam_cli.models import SteamGame
 
 
@@ -148,6 +149,31 @@ class ExporterTest(unittest.TestCase):
 
         self.assertIn("playtime_forever_minutes", output)
         self.assertIn("125", output)
+
+    def test_format_summary_includes_totals_and_libraries(self):
+        games = [
+            SteamGame(
+                app_id="123",
+                name="Example Game",
+                install_path=Path("C:/Steam/steamapps/common/ExampleGame"),
+                install_size_bytes=1073741824,
+                playtime_forever_minutes=125,
+            ),
+            SteamGame(
+                app_id="456",
+                name="Unknown Size",
+                install_path=Path("C:/Steam/steamapps/common/UnknownSize"),
+                playtime_forever_minutes=None,
+            ),
+        ]
+
+        output = format_summary(summarize_games(games, include_playtime=True))
+
+        self.assertIn("Summary", output)
+        self.assertIn("Games: 2", output)
+        self.assertIn("Total size: 1.0 GB (1 unknown)", output)
+        self.assertIn("Total playtime: 2h 5m (1 unknown)", output)
+        self.assertIn("C:\\Steam: 2 games, 1.0 GB (1 unknown)", output)
 
 
 if __name__ == "__main__":

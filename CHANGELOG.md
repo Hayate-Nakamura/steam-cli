@@ -10,6 +10,8 @@
 - `filter --min-playtime` と `filter --max-playtime` を追加し、総プレイ時間の範囲で抽出できるようにしました。
 - `filter --app-id` を追加し、Steam AppIDの完全一致で抽出できるようにしました。
 - `filter --name` と `filter --install-path` を追加し、ゲーム名とインストールパスを正規表現で抽出できるようにしました。
+- `list` と `filter` に `--sort` と `--desc` を追加し、名前、サイズ、最終更新日時、総プレイ時間で並び替えられるようにしました。
+- `list` と `filter` に `--summary` を追加し、ゲーム数、合計インストールサイズ、ライブラリ別の件数と容量を表示できるようにしました。
 - プレイ時間フィルタでは、総プレイ時間を確認できないゲームを結果から除外する挙動を明記しました。
 
 #### 変更
@@ -25,6 +27,8 @@
 - Added `filter --min-playtime` and `filter --max-playtime` for filtering by total playtime ranges.
 - Added `filter --app-id` for exact Steam AppID matches.
 - Added `filter --name` and `filter --install-path` for regular-expression matching against game names and install paths.
+- Added `--sort` and `--desc` to `list` and `filter` for sorting by name, size, last updated time, and total playtime.
+- Added `--summary` to `list` and `filter` for game counts, total install size, and per-library counts and sizes.
 - Documented that playtime filters exclude games whose total playtime could not be fetched.
 
 #### Changed
@@ -39,7 +43,7 @@
 #### 変更
 
 - READMEに必要条件、インストール方法、コマンド一覧、出力項目、設定とキャッシュ、制限事項を追加しました。
-- README全体の章構成を見直し、初めて読む人が導入から主要機能まで辿りやすい構成にしました。
+- README全体の章構成を見直し、はじめて読む人が導入から主要機能まで辿りやすい構成にしました。
 - バージョンを `0.3.1` に更新しました。
 
 ### English
