@@ -5,6 +5,7 @@ import re
 import sys
 from pathlib import Path
 
+from . import __version__
 from .analysis import sort_games, summarize_games
 from .exporter import format_games_csv, format_games_json, format_games_table, format_summary
 from .scanner import SteamNotFoundError, find_installed_games
@@ -34,6 +35,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--language",
         help="Steam Store API language code for localized app names. Defaults to the OS locale.",
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 

@@ -17,6 +17,8 @@ Steamライブラリをローカルから読み取り、Steam Store APIでロー
 - Steam Web APIから総プレイ時間を取得します。
 - JSON / CSV / テーブル形式で出力できます。
 - プレイ時間でゲームを抽出できます。
+- 名前、サイズ、最終更新日時、総プレイ時間で並び替えできます。
+- ゲーム数、合計サイズ、ライブラリ別の件数と容量を集計できます。
 
 ### 必要条件
 
@@ -39,6 +41,7 @@ python -m pip install -e .
 
 ```powershell
 steam-cli list
+steam-cli --version
 ```
 
 インストール後は、モジュールとして実行することもできます。
@@ -62,6 +65,7 @@ python -m steam_cli list
 steam-cli list
 steam-cli list --json
 steam-cli list --csv
+steam-cli --version
 steam-cli export --csv games.csv
 steam-cli export --json games.json
 ```
@@ -363,6 +367,30 @@ Windowsでは、設定ファイルへ保存するSteam Web API keyをDPAPIで現
 
 Steam Web API keyは秘密情報として扱い、共有しないでください。
 
+### Windows向け単体exeのビルド
+
+配布用の単体exeは、PyInstallerを任意依存としてインストールして作成できます。
+
+```powershell
+python -m pip install -e ".[dist]"
+python -m PyInstaller --onefile --name steam-cli-v0.4.0-windows-x86_64 --paths src tools\windows_exe_entry.py
+```
+
+成果物は `dist\steam-cli-v0.4.0-windows-x86_64.exe` に作成されます。
+
+リリース成果物名は次の形式にします。
+
+```text
+steam-cli-v<version>-windows-x86_64.exe
+```
+
+配布前に、生成したexeで次の確認を行います。
+
+```powershell
+dist\steam-cli-v0.4.0-windows-x86_64.exe --version
+dist\steam-cli-v0.4.0-windows-x86_64.exe list --help
+```
+
 ### SteamID64とSteam Web API key
 
 SteamID64はSteamプロフィールURLから確認できます。
@@ -409,7 +437,7 @@ Steam Store APIでゲーム名を取得できない場合は、`steamapps/appman
 | フェーズ3   | 完了       | 機能追加           | Steam Web API連携、総プレイ時間、未プレイゲーム抽出を追加しました。                                                                                                                                                           |
 | フェーズ3.5 | 完了       | 機能追加           | フィルタを拡張しました。`filter --app-id`, `filter --name`, `filter --install-path`, `filter --played`, `filter --min-playtime`, `filter --max-playtime` を追加し、未取得のプレイ時間を結果から除外する条件を明確にしました。 |
 | フェーズ3.6 | 完了       | 機能追加           | 並び替えと集計を追加しました。`list` と `filter` で名前、サイズ、最終更新日時、総プレイ時間順に並び替え、ゲーム数、合計インストールサイズ、ライブラリ別の件数と容量を確認できます。                                           |
-| フェーズ3.7 | 未着手     | ユーザー体験の向上 | Windows向け配布を整備します。単体exeのビルド手順、バージョン表示、リリース成果物の命名を追加します。                                                                                                                          |
+| フェーズ3.7 | 完了       | ユーザー体験の向上 | Windows向け配布を整備しました。単体exeのビルド手順、`steam-cli --version`、リリース成果物の命名ルールを追加しました。                                                                                                        |
 | フェーズ4   | 未着手     | 機能追加           | ストレージ分析を追加します。ライブラリごとの空き容量、ゲームサイズ、プレイ状況を組み合わせ、HDD / SSD配置を判断するためのレポートを出します。                                                                                 |
 | フェーズ4.5 | 未着手     | 機能追加           | 配置提案を追加します。移動候補、移動後の容量見込み、優先度を表示します。実際の移動は行いません。                                                                                                                              |
 | フェーズ5   | 未着手     | 安全性の向上       | 安全な操作支援を検討します。Steamの仕様に沿った移動手順の案内、ドライラン、確認プロンプトを前提にします。                                                                                                                     |
@@ -454,6 +482,8 @@ Runtime dependencies are intentionally limited to the Python standard library.
 - Fetch total playtime from the Steam Web API.
 - Output as table, JSON, or CSV.
 - Filter games by playtime.
+- Sort by name, size, last updated time, or total playtime.
+- Summarize game counts, total size, and per-library counts and sizes.
 
 ### Requirements
 
@@ -476,6 +506,7 @@ After installation, run the `steam-cli` command:
 
 ```powershell
 steam-cli list
+steam-cli --version
 ```
 
 After installation, you can also run it as a module:
@@ -499,6 +530,7 @@ python -m steam_cli list
 steam-cli list
 steam-cli list --json
 steam-cli list --csv
+steam-cli --version
 steam-cli export --csv games.csv
 steam-cli export --json games.json
 ```
@@ -800,6 +832,30 @@ On Windows, steam-cli protects the Steam Web API key saved in the config file wi
 
 Treat the Steam Web API key as a secret and do not share it.
 
+### Windows Single-File Exe Build
+
+Install PyInstaller through the optional distribution dependency group to build a single-file exe:
+
+```powershell
+python -m pip install -e ".[dist]"
+python -m PyInstaller --onefile --name steam-cli-v0.4.0-windows-x86_64 --paths src tools\windows_exe_entry.py
+```
+
+The build writes `dist\steam-cli-v0.4.0-windows-x86_64.exe`.
+
+Release artifacts use this name format:
+
+```text
+steam-cli-v<version>-windows-x86_64.exe
+```
+
+Before publishing, verify the generated exe:
+
+```powershell
+dist\steam-cli-v0.4.0-windows-x86_64.exe --version
+dist\steam-cli-v0.4.0-windows-x86_64.exe list --help
+```
+
 ### SteamID64 And Steam Web API Key
 
 You can find your SteamID64 from your Steam profile URL.
@@ -846,7 +902,7 @@ Roadmap items are grouped by implementation purpose.
 | Phase 3   | Done        | Feature         | Added Steam Web API integration, total playtime, and unplayed game filtering.                                                                                                                                                    |
 | Phase 3.5 | Done        | Feature         | Expanded filters. Added `filter --app-id`, `filter --name`, `filter --install-path`, `filter --played`, `filter --min-playtime`, and `filter --max-playtime`, with clear behavior for games whose playtime could not be fetched. |
 | Phase 3.6 | Done        | Feature         | Added sorting and summaries. `list` and `filter` can sort by name, size, last updated time, and total playtime, plus show game counts, total install size, and per-library counts and sizes.                                     |
-| Phase 3.7 | Not Started | User Experience | Prepare Windows distribution. Add single-file exe build instructions, version output, and release artifact naming.                                                                                                               |
+| Phase 3.7 | Done        | User Experience | Prepared Windows distribution. Added single-file exe build instructions, `steam-cli --version`, and release artifact naming rules.                                                                                              |
 | Phase 4   | Not Started | Feature         | Add storage analysis. Combine library free space, game size, and play status into reports that help users reason about HDD / SSD placement.                                                                                      |
 | Phase 4.5 | Not Started | Feature         | Add placement recommendations. Show move candidates, estimated space changes, and priority. Do not move files.                                                                                                                   |
 | Phase 5   | Not Started | Safety          | Consider safe operation helpers. Base them on Steam-compatible move guidance, dry runs, and confirmation prompts.                                                                                                                |

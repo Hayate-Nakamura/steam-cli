@@ -12,6 +12,8 @@
 - `filter --name` と `filter --install-path` を追加し、ゲーム名とインストールパスを正規表現で抽出できるようにしました。
 - `list` と `filter` に `--sort` と `--desc` を追加し、名前、サイズ、最終更新日時、総プレイ時間で並び替えられるようにしました。
 - `list` と `filter` に `--summary` を追加し、ゲーム数、合計インストールサイズ、ライブラリ別の件数と容量を表示できるようにしました。
+- `steam-cli --version` を追加し、CLIから現在のバージョンを確認できるようにしました。
+- Windows向け単体exeのビルド用に、PyInstallerを含む任意依存 `dist` を追加しました。
 - プレイ時間フィルタでは、総プレイ時間を確認できないゲームを結果から除外する挙動を明記しました。
 
 #### 変更
@@ -29,6 +31,8 @@
 - Added `filter --name` and `filter --install-path` for regular-expression matching against game names and install paths.
 - Added `--sort` and `--desc` to `list` and `filter` for sorting by name, size, last updated time, and total playtime.
 - Added `--summary` to `list` and `filter` for game counts, total install size, and per-library counts and sizes.
+- Added `steam-cli --version` so users can inspect the current CLI version.
+- Added the optional `dist` dependency group with PyInstaller for Windows single-file exe builds.
 - Documented that playtime filters exclude games whose total playtime could not be fetched.
 
 #### Changed

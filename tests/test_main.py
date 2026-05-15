@@ -14,6 +14,16 @@ from steam_cli.models import SteamGame
 
 
 class MainTest(unittest.TestCase):
+    def test_version_option_prints_version(self):
+        output = StringIO()
+
+        with redirect_stdout(output):
+            with self.assertRaises(SystemExit) as exc:
+                main(["--version"])
+
+        self.assertEqual(exc.exception.code, 0)
+        self.assertEqual(output.getvalue().strip(), "steam-cli 0.4.0")
+
     def test_filter_accepts_playtime_options(self):
         parser = build_parser()
 
